@@ -1,0 +1,62 @@
+name: worship_team_hub
+description: "Worship Team Hub — chord charts, setlists, and team coordination. Offline-first."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Backend
+  supabase_flutter: ^2.8.0
+
+  # Local DB (offline-first)
+  drift: ^2.20.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # State management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Navigation
+  go_router: ^14.6.0
+
+  # UI helpers
+  google_fonts: ^6.2.1
+  flutter_svg: ^2.0.10+1
+
+  # Connectivity & lifecycle
+  connectivity_plus: ^6.0.5
+
+  # Markdown (devotions, phase 2)
+  flutter_markdown: ^0.7.4
+
+  # Date utils
+  intl: ^0.19.0
+
+  # External URL handling
+  url_launcher: ^6.3.1
+
+  # Local prefs
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Code generation
+  build_runner: ^2.4.13
+  drift_dev: ^2.20.0
+  riverpod_generator: ^2.4.3
+  custom_lint: ^0.7.6
+  riverpod_lint: ^2.6.5
+
+flutter:
+  uses-material-design: true
