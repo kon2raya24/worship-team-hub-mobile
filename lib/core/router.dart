@@ -20,6 +20,7 @@ import '../features/devotions/ui/devotions_list_screen.dart';
 import '../features/devotions/ui/devotion_detail_screen.dart';
 import '../features/devotions/ui/devotion_compose_screen.dart';
 import '../features/songs/ui/song_compose_screen.dart';
+import '../features/songs/ui/song_import_screen.dart';
 import '../features/prayer/ui/prayer_screen.dart';
 import '../features/announcements/ui/announcements_screen.dart';
 import '../features/announcements/ui/announcement_compose_screen.dart';
@@ -60,6 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/songs/new',
         builder: (_, __) => const SongComposeScreen(),
+      ),
+      GoRoute(
+        path: '/songs/import',
+        builder: (_, __) => const SongImportScreen(),
       ),
       GoRoute(
         path: '/songs/:id',

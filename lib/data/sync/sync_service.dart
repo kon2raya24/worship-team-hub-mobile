@@ -615,6 +615,51 @@ class SyncService {
     }
   }
 
+  /// Leader-only bulk insert. Returns (added, skipped) on success or null
+  /// on failure. Skips by case-insensitive title match when [skipExisting]
+  /// is true.
+  Future<({int added, int skipped})?> bulkInsertSongs(
+    List<Map<String, dynamic>> rows, {
+    bool skipExisting = true,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      var toInsert = rows;
+      var skipped = 0;
+      if (skipExisting && rows.isNotEmpty) {
+        final titles =
+            rows.map((r) => r['title'] as String).toList(growable: false);
+        final existing = await supabase
+            .from('songs')
+            .select('title')
+            .inFilter('title', titles);
+        final have = (existing as List)
+            .map((s) => (s as Map<String, dynamic>)['title']
+                .toString()
+                .toLowerCase())
+            .toSet();
+        final before = toInsert.length;
+        toInsert = toInsert
+            .where((r) =>
+                !have.contains(r['title'].toString().toLowerCase()))
+            .toList();
+        skipped = before - toInsert.length;
+      }
+      if (toInsert.isNotEmpty) {
+        final stamped = toInsert
+            .map((r) => {...r, 'created_by': user.id})
+            .toList();
+        await supabase.from('songs').insert(stamped);
+      }
+      await _syncSongs();
+      return (added: toInsert.length, skipped: skipped);
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Bulk insert failed: $e\n$st');
+      return null;
+    }
+  }
+
   /// Leader-only — change another member's role between 'leader' / 'member'.
   Future<bool> setMemberRole(String userId, String role) async {
     try {

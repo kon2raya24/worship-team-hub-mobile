@@ -46,6 +46,14 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
           onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text('Songs'),
+        actions: [
+          if (isLeader)
+            IconButton(
+              icon: const Icon(Icons.upload_file, size: 20),
+              tooltip: 'Bulk import',
+              onPressed: () => context.push('/songs/import'),
+            ),
+        ],
       ),
       floatingActionButton: isLeader
           ? FloatingActionButton.extended(
