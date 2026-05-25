@@ -14,6 +14,14 @@ import '../features/songs/ui/song_detail_screen.dart';
 import '../features/setlists/ui/setlists_list_screen.dart';
 import '../features/setlists/ui/setlist_detail_screen.dart';
 import '../features/schedule/ui/schedule_screen.dart';
+import '../features/devotions/ui/devotions_list_screen.dart';
+import '../features/devotions/ui/devotion_detail_screen.dart';
+import '../features/prayer/ui/prayer_screen.dart';
+import '../features/announcements/ui/announcements_screen.dart';
+import '../features/games/ui/games_index_screen.dart';
+import '../features/games/ui/transpose_game_screen.dart';
+import '../features/games/ui/keys_game_screen.dart';
+import '../features/games/ui/bpm_game_screen.dart';
 import 'supabase_client.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -61,6 +69,39 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/schedule',
         builder: (_, __) => const ScheduleScreen(),
+      ),
+      GoRoute(
+        path: '/devotions',
+        builder: (_, __) => const DevotionsListScreen(),
+      ),
+      GoRoute(
+        path: '/devotions/:id',
+        builder: (_, state) =>
+            DevotionDetailScreen(devotionId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/prayer',
+        builder: (_, __) => const PrayerScreen(),
+      ),
+      GoRoute(
+        path: '/announcements',
+        builder: (_, __) => const AnnouncementsScreen(),
+      ),
+      GoRoute(
+        path: '/games',
+        builder: (_, __) => const GamesIndexScreen(),
+      ),
+      GoRoute(
+        path: '/games/transpose',
+        builder: (_, __) => const TransposeGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/keys',
+        builder: (_, __) => const KeysGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/bpm',
+        builder: (_, __) => const BpmGameScreen(),
       ),
     ],
   );

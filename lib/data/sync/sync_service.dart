@@ -35,6 +35,9 @@ class SyncService {
         _syncSongs(),
         _syncSetlistsAndJoins(),
         _syncProfilesAndSchedule(),
+        _syncDevotions(),
+        _syncPrayerRequests(),
+        _syncAnnouncements(),
       ]);
       _lastSyncedAt = DateTime.now();
       return SyncResult.ok;
@@ -152,6 +155,82 @@ class SyncService {
       );
     }).toList();
     await _db.replaceUpcomingAssignments(assignmentRows);
+  }
+
+  Future<void> _syncDevotions() async {
+    final rows = await supabase
+        .from('devotions')
+        .select('id, title, body, scripture_ref, published_at')
+        .order('published_at', ascending: false)
+        .limit(50);
+    final companions = (rows as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      return DevotionsCompanion.insert(
+        id: m['id'] as String,
+        title: m['title'] as String,
+        body: m['body'] as String,
+        scriptureRef: Value(m['scripture_ref'] as String?),
+        publishedAt: DateTime.parse(m['published_at'] as String),
+      );
+    }).toList();
+    await _db.upsertDevotions(companions);
+  }
+
+  Future<void> _syncPrayerRequests() async {
+    final rows = await supabase
+        .from('prayer_requests')
+        .select(
+          'id, author_id, body, is_answered, created_at, profiles(display_name)',
+        )
+        .order('created_at', ascending: false)
+        .limit(100);
+    final companions = (rows as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      final author = m['profiles'] as Map<String, dynamic>?;
+      return PrayerRequestsCompanion.insert(
+        id: m['id'] as String,
+        authorId: Value(m['author_id'] as String?),
+        authorName: Value(author?['display_name'] as String?),
+        body: m['body'] as String,
+        isAnswered: Value((m['is_answered'] as bool?) ?? false),
+        createdAt: DateTime.parse(m['created_at'] as String),
+      );
+    }).toList();
+    await _db.upsertPrayerRequests(companions);
+  }
+
+  Future<void> _syncAnnouncements() async {
+    final rows = await supabase
+        .from('announcements')
+        .select('id, title, body, pinned, created_at')
+        .order('created_at', ascending: false)
+        .limit(50);
+    final companions = (rows as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      return AnnouncementsCompanion.insert(
+        id: m['id'] as String,
+        title: m['title'] as String,
+        body: m['body'] as String,
+        pinned: Value((m['pinned'] as bool?) ?? false),
+        createdAt: DateTime.parse(m['created_at'] as String),
+      );
+    }).toList();
+    await _db.upsertAnnouncements(companions);
+  }
+
+  Future<bool> postPrayerRequest(String body) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return false;
+    try {
+      await supabase
+          .from('prayer_requests')
+          .insert({'author_id': user.id, 'body': body});
+      await _syncPrayerRequests();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Post prayer failed: $e\n$st');
+      return false;
+    }
   }
 }
 

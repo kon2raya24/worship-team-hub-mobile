@@ -72,14 +72,60 @@ class ScheduleAssignments extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('DevotionRow')
+class Devotions extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  TextColumn get scriptureRef => text().nullable()();
+  DateTimeColumn get publishedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('PrayerRequestRow')
+class PrayerRequests extends Table {
+  TextColumn get id => text()();
+  TextColumn get authorId => text().nullable()();
+  TextColumn get authorName => text().nullable()();
+  TextColumn get body => text()();
+  BoolColumn get isAnswered => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('AnnouncementRow')
+class Announcements extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get body => text()();
+  BoolColumn get pinned => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
-  tables: [Songs, Setlists, SetlistSongs, Profiles, ScheduleAssignments],
+  tables: [
+    Songs,
+    Setlists,
+    SetlistSongs,
+    Profiles,
+    ScheduleAssignments,
+    Devotions,
+    PrayerRequests,
+    Announcements,
+  ],
 )
 class AppDb extends _$AppDb {
   AppDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -88,6 +134,11 @@ class AppDb extends _$AppDb {
           if (from < 2) {
             await m.createTable(profiles);
             await m.createTable(scheduleAssignments);
+          }
+          if (from < 3) {
+            await m.createTable(devotions);
+            await m.createTable(prayerRequests);
+            await m.createTable(announcements);
           }
         },
       );
@@ -213,6 +264,59 @@ class UpcomingAssignment {
   UpcomingAssignment({required this.assignment, required this.memberName});
   final ScheduleAssignmentRow assignment;
   final String memberName;
+}
+
+extension AppDbReads on AppDb {
+  Stream<List<DevotionRow>> watchDevotions() =>
+      (select(devotions)..orderBy([(t) => OrderingTerm.desc(t.publishedAt)]))
+          .watch();
+
+  Future<DevotionRow?> getDevotion(String id) =>
+      (select(devotions)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertDevotions(List<DevotionsCompanion> rows) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      for (final row in rows) {
+        b.insert(devotions, row, mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
+
+  Stream<List<PrayerRequestRow>> watchPrayerRequests() =>
+      (select(prayerRequests)
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch();
+
+  Future<void> upsertPrayerRequests(
+    List<PrayerRequestsCompanion> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      for (final row in rows) {
+        b.insert(prayerRequests, row, mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
+
+  Stream<List<AnnouncementRow>> watchAnnouncements() =>
+      (select(announcements)
+            ..orderBy([
+              (t) => OrderingTerm.desc(t.pinned),
+              (t) => OrderingTerm.desc(t.createdAt),
+            ]))
+          .watch();
+
+  Future<void> upsertAnnouncements(
+    List<AnnouncementsCompanion> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      for (final row in rows) {
+        b.insert(announcements, row, mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
 }
 
 LazyDatabase _openConnection() {

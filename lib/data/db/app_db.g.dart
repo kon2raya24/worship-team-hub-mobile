@@ -1781,6 +1781,1142 @@ class ScheduleAssignmentsCompanion
   }
 }
 
+class $DevotionsTable extends Devotions
+    with TableInfo<$DevotionsTable, DevotionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DevotionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scriptureRefMeta = const VerificationMeta(
+    'scriptureRef',
+  );
+  @override
+  late final GeneratedColumn<String> scriptureRef = GeneratedColumn<String>(
+    'scripture_ref',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _publishedAtMeta = const VerificationMeta(
+    'publishedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> publishedAt = GeneratedColumn<DateTime>(
+    'published_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    body,
+    scriptureRef,
+    publishedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'devotions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DevotionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('scripture_ref')) {
+      context.handle(
+        _scriptureRefMeta,
+        scriptureRef.isAcceptableOrUnknown(
+          data['scripture_ref']!,
+          _scriptureRefMeta,
+        ),
+      );
+    }
+    if (data.containsKey('published_at')) {
+      context.handle(
+        _publishedAtMeta,
+        publishedAt.isAcceptableOrUnknown(
+          data['published_at']!,
+          _publishedAtMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_publishedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DevotionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DevotionRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      scriptureRef: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}scripture_ref'],
+      ),
+      publishedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}published_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DevotionsTable createAlias(String alias) {
+    return $DevotionsTable(attachedDatabase, alias);
+  }
+}
+
+class DevotionRow extends DataClass implements Insertable<DevotionRow> {
+  final String id;
+  final String title;
+  final String body;
+  final String? scriptureRef;
+  final DateTime publishedAt;
+  const DevotionRow({
+    required this.id,
+    required this.title,
+    required this.body,
+    this.scriptureRef,
+    required this.publishedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    if (!nullToAbsent || scriptureRef != null) {
+      map['scripture_ref'] = Variable<String>(scriptureRef);
+    }
+    map['published_at'] = Variable<DateTime>(publishedAt);
+    return map;
+  }
+
+  DevotionsCompanion toCompanion(bool nullToAbsent) {
+    return DevotionsCompanion(
+      id: Value(id),
+      title: Value(title),
+      body: Value(body),
+      scriptureRef: scriptureRef == null && nullToAbsent
+          ? const Value.absent()
+          : Value(scriptureRef),
+      publishedAt: Value(publishedAt),
+    );
+  }
+
+  factory DevotionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DevotionRow(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      scriptureRef: serializer.fromJson<String?>(json['scriptureRef']),
+      publishedAt: serializer.fromJson<DateTime>(json['publishedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'scriptureRef': serializer.toJson<String?>(scriptureRef),
+      'publishedAt': serializer.toJson<DateTime>(publishedAt),
+    };
+  }
+
+  DevotionRow copyWith({
+    String? id,
+    String? title,
+    String? body,
+    Value<String?> scriptureRef = const Value.absent(),
+    DateTime? publishedAt,
+  }) => DevotionRow(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    scriptureRef: scriptureRef.present ? scriptureRef.value : this.scriptureRef,
+    publishedAt: publishedAt ?? this.publishedAt,
+  );
+  DevotionRow copyWithCompanion(DevotionsCompanion data) {
+    return DevotionRow(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      scriptureRef: data.scriptureRef.present
+          ? data.scriptureRef.value
+          : this.scriptureRef,
+      publishedAt: data.publishedAt.present
+          ? data.publishedAt.value
+          : this.publishedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DevotionRow(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('scriptureRef: $scriptureRef, ')
+          ..write('publishedAt: $publishedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, body, scriptureRef, publishedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DevotionRow &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.scriptureRef == this.scriptureRef &&
+          other.publishedAt == this.publishedAt);
+}
+
+class DevotionsCompanion extends UpdateCompanion<DevotionRow> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<String?> scriptureRef;
+  final Value<DateTime> publishedAt;
+  final Value<int> rowid;
+  const DevotionsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.scriptureRef = const Value.absent(),
+    this.publishedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  DevotionsCompanion.insert({
+    required String id,
+    required String title,
+    required String body,
+    this.scriptureRef = const Value.absent(),
+    required DateTime publishedAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       body = Value(body),
+       publishedAt = Value(publishedAt);
+  static Insertable<DevotionRow> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<String>? scriptureRef,
+    Expression<DateTime>? publishedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (scriptureRef != null) 'scripture_ref': scriptureRef,
+      if (publishedAt != null) 'published_at': publishedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  DevotionsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? body,
+    Value<String?>? scriptureRef,
+    Value<DateTime>? publishedAt,
+    Value<int>? rowid,
+  }) {
+    return DevotionsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      scriptureRef: scriptureRef ?? this.scriptureRef,
+      publishedAt: publishedAt ?? this.publishedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (scriptureRef.present) {
+      map['scripture_ref'] = Variable<String>(scriptureRef.value);
+    }
+    if (publishedAt.present) {
+      map['published_at'] = Variable<DateTime>(publishedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DevotionsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('scriptureRef: $scriptureRef, ')
+          ..write('publishedAt: $publishedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PrayerRequestsTable extends PrayerRequests
+    with TableInfo<$PrayerRequestsTable, PrayerRequestRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PrayerRequestsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorNameMeta = const VerificationMeta(
+    'authorName',
+  );
+  @override
+  late final GeneratedColumn<String> authorName = GeneratedColumn<String>(
+    'author_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isAnsweredMeta = const VerificationMeta(
+    'isAnswered',
+  );
+  @override
+  late final GeneratedColumn<bool> isAnswered = GeneratedColumn<bool>(
+    'is_answered',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_answered" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    authorId,
+    authorName,
+    body,
+    isAnswered,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'prayer_requests';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PrayerRequestRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    }
+    if (data.containsKey('author_name')) {
+      context.handle(
+        _authorNameMeta,
+        authorName.isAcceptableOrUnknown(data['author_name']!, _authorNameMeta),
+      );
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('is_answered')) {
+      context.handle(
+        _isAnsweredMeta,
+        isAnswered.isAcceptableOrUnknown(data['is_answered']!, _isAnsweredMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PrayerRequestRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PrayerRequestRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      ),
+      authorName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_name'],
+      ),
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      isAnswered: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_answered'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PrayerRequestsTable createAlias(String alias) {
+    return $PrayerRequestsTable(attachedDatabase, alias);
+  }
+}
+
+class PrayerRequestRow extends DataClass
+    implements Insertable<PrayerRequestRow> {
+  final String id;
+  final String? authorId;
+  final String? authorName;
+  final String body;
+  final bool isAnswered;
+  final DateTime createdAt;
+  const PrayerRequestRow({
+    required this.id,
+    this.authorId,
+    this.authorName,
+    required this.body,
+    required this.isAnswered,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || authorId != null) {
+      map['author_id'] = Variable<String>(authorId);
+    }
+    if (!nullToAbsent || authorName != null) {
+      map['author_name'] = Variable<String>(authorName);
+    }
+    map['body'] = Variable<String>(body);
+    map['is_answered'] = Variable<bool>(isAnswered);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PrayerRequestsCompanion toCompanion(bool nullToAbsent) {
+    return PrayerRequestsCompanion(
+      id: Value(id),
+      authorId: authorId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorId),
+      authorName: authorName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(authorName),
+      body: Value(body),
+      isAnswered: Value(isAnswered),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PrayerRequestRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PrayerRequestRow(
+      id: serializer.fromJson<String>(json['id']),
+      authorId: serializer.fromJson<String?>(json['authorId']),
+      authorName: serializer.fromJson<String?>(json['authorName']),
+      body: serializer.fromJson<String>(json['body']),
+      isAnswered: serializer.fromJson<bool>(json['isAnswered']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'authorId': serializer.toJson<String?>(authorId),
+      'authorName': serializer.toJson<String?>(authorName),
+      'body': serializer.toJson<String>(body),
+      'isAnswered': serializer.toJson<bool>(isAnswered),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PrayerRequestRow copyWith({
+    String? id,
+    Value<String?> authorId = const Value.absent(),
+    Value<String?> authorName = const Value.absent(),
+    String? body,
+    bool? isAnswered,
+    DateTime? createdAt,
+  }) => PrayerRequestRow(
+    id: id ?? this.id,
+    authorId: authorId.present ? authorId.value : this.authorId,
+    authorName: authorName.present ? authorName.value : this.authorName,
+    body: body ?? this.body,
+    isAnswered: isAnswered ?? this.isAnswered,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PrayerRequestRow copyWithCompanion(PrayerRequestsCompanion data) {
+    return PrayerRequestRow(
+      id: data.id.present ? data.id.value : this.id,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      authorName: data.authorName.present
+          ? data.authorName.value
+          : this.authorName,
+      body: data.body.present ? data.body.value : this.body,
+      isAnswered: data.isAnswered.present
+          ? data.isAnswered.value
+          : this.isAnswered,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRequestRow(')
+          ..write('id: $id, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('body: $body, ')
+          ..write('isAnswered: $isAnswered, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, authorId, authorName, body, isAnswered, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PrayerRequestRow &&
+          other.id == this.id &&
+          other.authorId == this.authorId &&
+          other.authorName == this.authorName &&
+          other.body == this.body &&
+          other.isAnswered == this.isAnswered &&
+          other.createdAt == this.createdAt);
+}
+
+class PrayerRequestsCompanion extends UpdateCompanion<PrayerRequestRow> {
+  final Value<String> id;
+  final Value<String?> authorId;
+  final Value<String?> authorName;
+  final Value<String> body;
+  final Value<bool> isAnswered;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const PrayerRequestsCompanion({
+    this.id = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    this.body = const Value.absent(),
+    this.isAnswered = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PrayerRequestsCompanion.insert({
+    required String id,
+    this.authorId = const Value.absent(),
+    this.authorName = const Value.absent(),
+    required String body,
+    this.isAnswered = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       body = Value(body),
+       createdAt = Value(createdAt);
+  static Insertable<PrayerRequestRow> custom({
+    Expression<String>? id,
+    Expression<String>? authorId,
+    Expression<String>? authorName,
+    Expression<String>? body,
+    Expression<bool>? isAnswered,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (authorId != null) 'author_id': authorId,
+      if (authorName != null) 'author_name': authorName,
+      if (body != null) 'body': body,
+      if (isAnswered != null) 'is_answered': isAnswered,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PrayerRequestsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? authorId,
+    Value<String?>? authorName,
+    Value<String>? body,
+    Value<bool>? isAnswered,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return PrayerRequestsCompanion(
+      id: id ?? this.id,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      body: body ?? this.body,
+      isAnswered: isAnswered ?? this.isAnswered,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (authorName.present) {
+      map['author_name'] = Variable<String>(authorName.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (isAnswered.present) {
+      map['is_answered'] = Variable<bool>(isAnswered.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PrayerRequestsCompanion(')
+          ..write('id: $id, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorName: $authorName, ')
+          ..write('body: $body, ')
+          ..write('isAnswered: $isAnswered, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $AnnouncementsTable extends Announcements
+    with TableInfo<$AnnouncementsTable, AnnouncementRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AnnouncementsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pinnedMeta = const VerificationMeta('pinned');
+  @override
+  late final GeneratedColumn<bool> pinned = GeneratedColumn<bool>(
+    'pinned',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("pinned" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, title, body, pinned, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'announcements';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AnnouncementRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('pinned')) {
+      context.handle(
+        _pinnedMeta,
+        pinned.isAcceptableOrUnknown(data['pinned']!, _pinnedMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AnnouncementRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AnnouncementRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      pinned: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}pinned'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $AnnouncementsTable createAlias(String alias) {
+    return $AnnouncementsTable(attachedDatabase, alias);
+  }
+}
+
+class AnnouncementRow extends DataClass implements Insertable<AnnouncementRow> {
+  final String id;
+  final String title;
+  final String body;
+  final bool pinned;
+  final DateTime createdAt;
+  const AnnouncementRow({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.pinned,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['title'] = Variable<String>(title);
+    map['body'] = Variable<String>(body);
+    map['pinned'] = Variable<bool>(pinned);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  AnnouncementsCompanion toCompanion(bool nullToAbsent) {
+    return AnnouncementsCompanion(
+      id: Value(id),
+      title: Value(title),
+      body: Value(body),
+      pinned: Value(pinned),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory AnnouncementRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AnnouncementRow(
+      id: serializer.fromJson<String>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      body: serializer.fromJson<String>(json['body']),
+      pinned: serializer.fromJson<bool>(json['pinned']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'title': serializer.toJson<String>(title),
+      'body': serializer.toJson<String>(body),
+      'pinned': serializer.toJson<bool>(pinned),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  AnnouncementRow copyWith({
+    String? id,
+    String? title,
+    String? body,
+    bool? pinned,
+    DateTime? createdAt,
+  }) => AnnouncementRow(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    body: body ?? this.body,
+    pinned: pinned ?? this.pinned,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  AnnouncementRow copyWithCompanion(AnnouncementsCompanion data) {
+    return AnnouncementRow(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      body: data.body.present ? data.body.value : this.body,
+      pinned: data.pinned.present ? data.pinned.value : this.pinned,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnnouncementRow(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('pinned: $pinned, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, title, body, pinned, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AnnouncementRow &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.body == this.body &&
+          other.pinned == this.pinned &&
+          other.createdAt == this.createdAt);
+}
+
+class AnnouncementsCompanion extends UpdateCompanion<AnnouncementRow> {
+  final Value<String> id;
+  final Value<String> title;
+  final Value<String> body;
+  final Value<bool> pinned;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const AnnouncementsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.body = const Value.absent(),
+    this.pinned = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AnnouncementsCompanion.insert({
+    required String id,
+    required String title,
+    required String body,
+    this.pinned = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       title = Value(title),
+       body = Value(body),
+       createdAt = Value(createdAt);
+  static Insertable<AnnouncementRow> custom({
+    Expression<String>? id,
+    Expression<String>? title,
+    Expression<String>? body,
+    Expression<bool>? pinned,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (body != null) 'body': body,
+      if (pinned != null) 'pinned': pinned,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AnnouncementsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? title,
+    Value<String>? body,
+    Value<bool>? pinned,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return AnnouncementsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      body: body ?? this.body,
+      pinned: pinned ?? this.pinned,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (pinned.present) {
+      map['pinned'] = Variable<bool>(pinned.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AnnouncementsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('body: $body, ')
+          ..write('pinned: $pinned, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDb extends GeneratedDatabase {
   _$AppDb(QueryExecutor e) : super(e);
   $AppDbManager get managers => $AppDbManager(this);
@@ -1790,6 +2926,9 @@ abstract class _$AppDb extends GeneratedDatabase {
   late final $ProfilesTable profiles = $ProfilesTable(this);
   late final $ScheduleAssignmentsTable scheduleAssignments =
       $ScheduleAssignmentsTable(this);
+  late final $DevotionsTable devotions = $DevotionsTable(this);
+  late final $PrayerRequestsTable prayerRequests = $PrayerRequestsTable(this);
+  late final $AnnouncementsTable announcements = $AnnouncementsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1800,6 +2939,9 @@ abstract class _$AppDb extends GeneratedDatabase {
     setlistSongs,
     profiles,
     scheduleAssignments,
+    devotions,
+    prayerRequests,
+    announcements,
   ];
 }
 
@@ -2791,6 +3933,627 @@ typedef $$ScheduleAssignmentsTableProcessedTableManager =
       ScheduleAssignmentRow,
       PrefetchHooks Function()
     >;
+typedef $$DevotionsTableCreateCompanionBuilder =
+    DevotionsCompanion Function({
+      required String id,
+      required String title,
+      required String body,
+      Value<String?> scriptureRef,
+      required DateTime publishedAt,
+      Value<int> rowid,
+    });
+typedef $$DevotionsTableUpdateCompanionBuilder =
+    DevotionsCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String> body,
+      Value<String?> scriptureRef,
+      Value<DateTime> publishedAt,
+      Value<int> rowid,
+    });
+
+class $$DevotionsTableFilterComposer
+    extends Composer<_$AppDb, $DevotionsTable> {
+  $$DevotionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get scriptureRef => $composableBuilder(
+    column: $table.scriptureRef,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DevotionsTableOrderingComposer
+    extends Composer<_$AppDb, $DevotionsTable> {
+  $$DevotionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get scriptureRef => $composableBuilder(
+    column: $table.scriptureRef,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DevotionsTableAnnotationComposer
+    extends Composer<_$AppDb, $DevotionsTable> {
+  $$DevotionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<String> get scriptureRef => $composableBuilder(
+    column: $table.scriptureRef,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get publishedAt => $composableBuilder(
+    column: $table.publishedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DevotionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $DevotionsTable,
+          DevotionRow,
+          $$DevotionsTableFilterComposer,
+          $$DevotionsTableOrderingComposer,
+          $$DevotionsTableAnnotationComposer,
+          $$DevotionsTableCreateCompanionBuilder,
+          $$DevotionsTableUpdateCompanionBuilder,
+          (DevotionRow, BaseReferences<_$AppDb, $DevotionsTable, DevotionRow>),
+          DevotionRow,
+          PrefetchHooks Function()
+        > {
+  $$DevotionsTableTableManager(_$AppDb db, $DevotionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DevotionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DevotionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DevotionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<String?> scriptureRef = const Value.absent(),
+                Value<DateTime> publishedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => DevotionsCompanion(
+                id: id,
+                title: title,
+                body: body,
+                scriptureRef: scriptureRef,
+                publishedAt: publishedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required String body,
+                Value<String?> scriptureRef = const Value.absent(),
+                required DateTime publishedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => DevotionsCompanion.insert(
+                id: id,
+                title: title,
+                body: body,
+                scriptureRef: scriptureRef,
+                publishedAt: publishedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DevotionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $DevotionsTable,
+      DevotionRow,
+      $$DevotionsTableFilterComposer,
+      $$DevotionsTableOrderingComposer,
+      $$DevotionsTableAnnotationComposer,
+      $$DevotionsTableCreateCompanionBuilder,
+      $$DevotionsTableUpdateCompanionBuilder,
+      (DevotionRow, BaseReferences<_$AppDb, $DevotionsTable, DevotionRow>),
+      DevotionRow,
+      PrefetchHooks Function()
+    >;
+typedef $$PrayerRequestsTableCreateCompanionBuilder =
+    PrayerRequestsCompanion Function({
+      required String id,
+      Value<String?> authorId,
+      Value<String?> authorName,
+      required String body,
+      Value<bool> isAnswered,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$PrayerRequestsTableUpdateCompanionBuilder =
+    PrayerRequestsCompanion Function({
+      Value<String> id,
+      Value<String?> authorId,
+      Value<String?> authorName,
+      Value<String> body,
+      Value<bool> isAnswered,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$PrayerRequestsTableFilterComposer
+    extends Composer<_$AppDb, $PrayerRequestsTable> {
+  $$PrayerRequestsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isAnswered => $composableBuilder(
+    column: $table.isAnswered,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PrayerRequestsTableOrderingComposer
+    extends Composer<_$AppDb, $PrayerRequestsTable> {
+  $$PrayerRequestsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isAnswered => $composableBuilder(
+    column: $table.isAnswered,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PrayerRequestsTableAnnotationComposer
+    extends Composer<_$AppDb, $PrayerRequestsTable> {
+  $$PrayerRequestsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<bool> get isAnswered => $composableBuilder(
+    column: $table.isAnswered,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PrayerRequestsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $PrayerRequestsTable,
+          PrayerRequestRow,
+          $$PrayerRequestsTableFilterComposer,
+          $$PrayerRequestsTableOrderingComposer,
+          $$PrayerRequestsTableAnnotationComposer,
+          $$PrayerRequestsTableCreateCompanionBuilder,
+          $$PrayerRequestsTableUpdateCompanionBuilder,
+          (
+            PrayerRequestRow,
+            BaseReferences<_$AppDb, $PrayerRequestsTable, PrayerRequestRow>,
+          ),
+          PrayerRequestRow,
+          PrefetchHooks Function()
+        > {
+  $$PrayerRequestsTableTableManager(_$AppDb db, $PrayerRequestsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PrayerRequestsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PrayerRequestsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PrayerRequestsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> authorId = const Value.absent(),
+                Value<String?> authorName = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<bool> isAnswered = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRequestsCompanion(
+                id: id,
+                authorId: authorId,
+                authorName: authorName,
+                body: body,
+                isAnswered: isAnswered,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> authorId = const Value.absent(),
+                Value<String?> authorName = const Value.absent(),
+                required String body,
+                Value<bool> isAnswered = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => PrayerRequestsCompanion.insert(
+                id: id,
+                authorId: authorId,
+                authorName: authorName,
+                body: body,
+                isAnswered: isAnswered,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PrayerRequestsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $PrayerRequestsTable,
+      PrayerRequestRow,
+      $$PrayerRequestsTableFilterComposer,
+      $$PrayerRequestsTableOrderingComposer,
+      $$PrayerRequestsTableAnnotationComposer,
+      $$PrayerRequestsTableCreateCompanionBuilder,
+      $$PrayerRequestsTableUpdateCompanionBuilder,
+      (
+        PrayerRequestRow,
+        BaseReferences<_$AppDb, $PrayerRequestsTable, PrayerRequestRow>,
+      ),
+      PrayerRequestRow,
+      PrefetchHooks Function()
+    >;
+typedef $$AnnouncementsTableCreateCompanionBuilder =
+    AnnouncementsCompanion Function({
+      required String id,
+      required String title,
+      required String body,
+      Value<bool> pinned,
+      required DateTime createdAt,
+      Value<int> rowid,
+    });
+typedef $$AnnouncementsTableUpdateCompanionBuilder =
+    AnnouncementsCompanion Function({
+      Value<String> id,
+      Value<String> title,
+      Value<String> body,
+      Value<bool> pinned,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$AnnouncementsTableFilterComposer
+    extends Composer<_$AppDb, $AnnouncementsTable> {
+  $$AnnouncementsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AnnouncementsTableOrderingComposer
+    extends Composer<_$AppDb, $AnnouncementsTable> {
+  $$AnnouncementsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get pinned => $composableBuilder(
+    column: $table.pinned,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AnnouncementsTableAnnotationComposer
+    extends Composer<_$AppDb, $AnnouncementsTable> {
+  $$AnnouncementsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<bool> get pinned =>
+      $composableBuilder(column: $table.pinned, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$AnnouncementsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $AnnouncementsTable,
+          AnnouncementRow,
+          $$AnnouncementsTableFilterComposer,
+          $$AnnouncementsTableOrderingComposer,
+          $$AnnouncementsTableAnnotationComposer,
+          $$AnnouncementsTableCreateCompanionBuilder,
+          $$AnnouncementsTableUpdateCompanionBuilder,
+          (
+            AnnouncementRow,
+            BaseReferences<_$AppDb, $AnnouncementsTable, AnnouncementRow>,
+          ),
+          AnnouncementRow,
+          PrefetchHooks Function()
+        > {
+  $$AnnouncementsTableTableManager(_$AppDb db, $AnnouncementsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$AnnouncementsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$AnnouncementsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$AnnouncementsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<bool> pinned = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AnnouncementsCompanion(
+                id: id,
+                title: title,
+                body: body,
+                pinned: pinned,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String title,
+                required String body,
+                Value<bool> pinned = const Value.absent(),
+                required DateTime createdAt,
+                Value<int> rowid = const Value.absent(),
+              }) => AnnouncementsCompanion.insert(
+                id: id,
+                title: title,
+                body: body,
+                pinned: pinned,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AnnouncementsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $AnnouncementsTable,
+      AnnouncementRow,
+      $$AnnouncementsTableFilterComposer,
+      $$AnnouncementsTableOrderingComposer,
+      $$AnnouncementsTableAnnotationComposer,
+      $$AnnouncementsTableCreateCompanionBuilder,
+      $$AnnouncementsTableUpdateCompanionBuilder,
+      (
+        AnnouncementRow,
+        BaseReferences<_$AppDb, $AnnouncementsTable, AnnouncementRow>,
+      ),
+      AnnouncementRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDbManager {
   final _$AppDb _db;
@@ -2805,4 +4568,10 @@ class $AppDbManager {
       $$ProfilesTableTableManager(_db, _db.profiles);
   $$ScheduleAssignmentsTableTableManager get scheduleAssignments =>
       $$ScheduleAssignmentsTableTableManager(_db, _db.scheduleAssignments);
+  $$DevotionsTableTableManager get devotions =>
+      $$DevotionsTableTableManager(_db, _db.devotions);
+  $$PrayerRequestsTableTableManager get prayerRequests =>
+      $$PrayerRequestsTableTableManager(_db, _db.prayerRequests);
+  $$AnnouncementsTableTableManager get announcements =>
+      $$AnnouncementsTableTableManager(_db, _db.announcements);
 }

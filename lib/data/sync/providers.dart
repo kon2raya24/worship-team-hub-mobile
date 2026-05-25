@@ -55,3 +55,22 @@ final upcomingScheduleStreamProvider =
   final db = ref.watch(appDbProvider);
   return db.watchUpcomingAssignments();
 });
+
+final devotionsStreamProvider = StreamProvider<List<DevotionRow>>((ref) {
+  return ref.watch(appDbProvider).watchDevotions();
+});
+
+final devotionByIdProvider =
+    FutureProvider.family<DevotionRow?, String>((ref, id) {
+  return ref.watch(appDbProvider).getDevotion(id);
+});
+
+final prayerRequestsStreamProvider =
+    StreamProvider<List<PrayerRequestRow>>((ref) {
+  return ref.watch(appDbProvider).watchPrayerRequests();
+});
+
+final announcementsStreamProvider =
+    StreamProvider<List<AnnouncementRow>>((ref) {
+  return ref.watch(appDbProvider).watchAnnouncements();
+});

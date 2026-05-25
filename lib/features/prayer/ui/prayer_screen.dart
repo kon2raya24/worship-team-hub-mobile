@@ -1,0 +1,187 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/theme.dart';
+import '../../../data/db/app_db.dart';
+import '../../../data/sync/providers.dart';
+import '../../../data/sync/sync_service.dart';
+
+class PrayerScreen extends ConsumerStatefulWidget {
+  const PrayerScreen({super.key});
+
+  @override
+  ConsumerState<PrayerScreen> createState() => _PrayerScreenState();
+}
+
+class _PrayerScreenState extends ConsumerState<PrayerScreen> {
+  final _controller = TextEditingController();
+  bool _posting = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final body = _controller.text.trim();
+    if (body.isEmpty || _posting) return;
+    setState(() => _posting = true);
+    final ok = await ref.read(syncServiceProvider).postPrayerRequest(body);
+    if (!mounted) return;
+    setState(() => _posting = false);
+    if (ok) {
+      _controller.clear();
+      FocusScope.of(context).unfocus();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not post — check your connection.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prayers = ref.watch(prayerRequestsStreamProvider);
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, size: 20),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+        ),
+        title: const Text('Prayer requests'),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: prayers.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Text('Failed to load.\n$e',
+                      style: const TextStyle(color: Sanctuary.muted)),
+                ),
+                data: (list) => RefreshIndicator(
+                  color: Sanctuary.auroraCyan,
+                  onRefresh: () => ref.read(syncServiceProvider).syncAll(),
+                  child: list.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          children: const [
+                            SizedBox(height: 120),
+                            Center(
+                              child: Text(
+                                'No prayer requests yet.\nBe the first to share.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Sanctuary.muted),
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: list.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 10),
+                          itemBuilder: (_, i) => _Card(p: list[i]),
+                        ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              child: GlassCard(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _controller,
+                        minLines: 1,
+                        maxLines: 4,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: const InputDecoration(
+                          hintText: 'Share a request…',
+                          border: InputBorder.none,
+                          filled: false,
+                          contentPadding: EdgeInsets.symmetric(vertical: 6),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: _posting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Sanctuary.auroraCyan),
+                            )
+                          : const Icon(Icons.send,
+                              color: Sanctuary.auroraCyan),
+                      onPressed: _posting ? null : _submit,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _Card extends StatelessWidget {
+  const _Card({required this.p});
+  final PrayerRequestRow p;
+
+  @override
+  Widget build(BuildContext context) {
+    final author = (p.authorName ?? '').isEmpty ? 'Anonymous' : p.authorName!;
+    return GlassCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(author,
+                  style: Sanctuary.display(
+                      fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Text(DateFormat.MMMd().add_jm().format(p.createdAt),
+                  style: const TextStyle(color: Sanctuary.muted, fontSize: 11)),
+              const Spacer(),
+              if (p.isAnswered)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Sanctuary.success.withValues(alpha: 0.15),
+                    border: Border.all(
+                        color: Sanctuary.success.withValues(alpha: 0.4)),
+                    borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                  ),
+                  child: Text('ANSWERED',
+                      style: Sanctuary.mono(
+                          fontSize: 9,
+                          color: Sanctuary.success,
+                          fontWeight: FontWeight.w700)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(p.body,
+              style: const TextStyle(
+                  color: Sanctuary.foreground, fontSize: 14, height: 1.5)),
+        ],
+      ),
+    );
+  }
+}
