@@ -67,6 +67,30 @@ void main() {
     });
   });
 
+  group('ChordPro.semitonesBetween', () {
+    test('common up shifts', () {
+      expect(ChordPro.semitonesBetween('G', 'A'), 2);
+      expect(ChordPro.semitonesBetween('C', 'E'), 4);
+      expect(ChordPro.semitonesBetween('G', 'C'), 5);
+    });
+    test('common down shifts', () {
+      expect(ChordPro.semitonesBetween('A', 'G'), -2);
+      expect(ChordPro.semitonesBetween('E', 'D'), -2);
+    });
+    test('wraps to closest direction', () {
+      // G → F# could be -1 or +11; should pick -1.
+      expect(ChordPro.semitonesBetween('G', 'F#'), -1);
+      // G → A# is +3, not -9.
+      expect(ChordPro.semitonesBetween('G', 'A#'), 3);
+    });
+    test('returns 0 for nulls/empties/garbage', () {
+      expect(ChordPro.semitonesBetween(null, 'A'), 0);
+      expect(ChordPro.semitonesBetween('G', null), 0);
+      expect(ChordPro.semitonesBetween('', 'A'), 0);
+      expect(ChordPro.semitonesBetween('G', 'N.C.'), 0);
+    });
+  });
+
   group('ChordPro.transpose (whole song)', () {
     test('transposes every chord and the key directive', () {
       final song = ChordPro.parse('{key: G}\n[G]hi [Am]there [D]friend\n');

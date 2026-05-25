@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
 
@@ -16,6 +17,9 @@ class HomeScreen extends ConsumerWidget {
     final email = currentUser?.email ?? 'team';
     // Fire-and-forget initial sync. Errors are surfaced via the badge below.
     final sync = ref.watch(startupSyncProvider);
+    final connectivity = ref.watch(connectivityProvider);
+    final online = connectivity.value != null && isOnline(connectivity.value!);
+    wireAutoSync(ref);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -44,7 +48,7 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Text('Welcome back', style: Sanctuary.display(fontSize: 28)),
             const SizedBox(height: 12),
-            _SyncBadge(state: sync),
+            _SyncBadge(state: sync, online: online),
             const SizedBox(height: 24),
             _HomeTile(
               title: 'Songs',
@@ -61,6 +65,14 @@ class HomeScreen extends ConsumerWidget {
               accent: Sanctuary.auroraCyan,
               onTap: () => context.go('/setlists'),
             ),
+            const SizedBox(height: 12),
+            _HomeTile(
+              title: 'Schedule',
+              subtitle: 'Sunday roster',
+              icon: Icons.calendar_month_outlined,
+              accent: Sanctuary.auroraMagenta,
+              onTap: () => context.go('/schedule'),
+            ),
           ],
         ),
       ),
@@ -69,25 +81,31 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _SyncBadge extends StatelessWidget {
-  const _SyncBadge({required this.state});
+  const _SyncBadge({required this.state, required this.online});
 
   final AsyncValue<SyncResult> state;
+  final bool online;
 
   @override
   Widget build(BuildContext context) {
-    final (icon, label, color) = switch (state) {
-      AsyncLoading() => (
+    final (icon, label, color) = switch ((state, online)) {
+      (_, false) => (
+        Icons.cloud_off_outlined,
+        'Offline · using cached data',
+        Sanctuary.auroraAmber,
+      ),
+      (AsyncLoading(), _) => (
         Icons.sync,
         'Syncing…',
         Sanctuary.auroraCyan,
       ),
-      AsyncError(:final error) => (
-        Icons.cloud_off_outlined,
-        'Offline · $error',
+      (AsyncError(:final error), _) => (
+        Icons.error_outline,
+        'Sync failed · $error',
         Sanctuary.auroraMagenta,
       ),
-      AsyncData(:final value) when value == SyncResult.failed => (
-        Icons.cloud_off_outlined,
+      (AsyncData(:final value), _) when value == SyncResult.failed => (
+        Icons.error_outline,
         'Last sync failed — pull to retry',
         Sanctuary.auroraMagenta,
       ),

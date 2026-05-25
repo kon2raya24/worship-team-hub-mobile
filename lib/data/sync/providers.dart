@@ -48,3 +48,10 @@ final startupSyncProvider = FutureProvider<SyncResult>((ref) async {
   final svc = ref.read(syncServiceProvider);
   return svc.syncAll();
 });
+
+/// Upcoming schedule assignments, joined to member display name.
+final upcomingScheduleStreamProvider =
+    StreamProvider<List<UpcomingAssignment>>((ref) {
+  final db = ref.watch(appDbProvider);
+  return db.watchUpcomingAssignments();
+});

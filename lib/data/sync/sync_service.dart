@@ -31,7 +31,11 @@ class SyncService {
     if (_syncing) return SyncResult.skipped;
     _syncing = true;
     try {
-      await Future.wait([_syncSongs(), _syncSetlistsAndJoins()]);
+      await Future.wait([
+        _syncSongs(),
+        _syncSetlistsAndJoins(),
+        _syncProfilesAndSchedule(),
+      ]);
       _lastSyncedAt = DateTime.now();
       return SyncResult.ok;
     } catch (e, st) {
@@ -111,6 +115,43 @@ class SyncService {
     for (final entry in perSetlistSongs.entries) {
       await _db.replaceSetlistSongs(entry.key, entry.value);
     }
+  }
+
+  Future<void> _syncProfilesAndSchedule() async {
+    final today = DateTime.now();
+    final cutoff = DateTime(today.year, today.month, today.day)
+        .toIso8601String()
+        .substring(0, 10);
+
+    final results = await Future.wait([
+      supabase.from('profiles').select('id, display_name, role'),
+      supabase
+          .from('schedule_assignments')
+          .select('id, service_date, user_id, role')
+          .gte('service_date', cutoff)
+          .order('service_date'),
+    ]);
+
+    final profileRows = (results[0] as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      return ProfilesCompanion.insert(
+        id: m['id'] as String,
+        displayName: m['display_name'] as String,
+        role: Value((m['role'] as String?) ?? 'member'),
+      );
+    }).toList();
+    await _db.upsertProfiles(profileRows);
+
+    final assignmentRows = (results[1] as List).map((r) {
+      final m = r as Map<String, dynamic>;
+      return ScheduleAssignmentsCompanion.insert(
+        id: m['id'] as String,
+        serviceDate: DateTime.parse(m['service_date'] as String),
+        userId: m['user_id'] as String,
+        role: m['role'] as String,
+      );
+    }).toList();
+    await _db.replaceUpcomingAssignments(assignmentRows);
   }
 }
 

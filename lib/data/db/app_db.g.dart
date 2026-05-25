@@ -1206,12 +1206,590 @@ class SetlistSongsCompanion extends UpdateCompanion<SetlistSongRow> {
   }
 }
 
+class $ProfilesTable extends Profiles
+    with TableInfo<$ProfilesTable, ProfileRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ProfilesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _displayNameMeta = const VerificationMeta(
+    'displayName',
+  );
+  @override
+  late final GeneratedColumn<String> displayName = GeneratedColumn<String>(
+    'display_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('member'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, displayName, role];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'profiles';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ProfileRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('display_name')) {
+      context.handle(
+        _displayNameMeta,
+        displayName.isAcceptableOrUnknown(
+          data['display_name']!,
+          _displayNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_displayNameMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ProfileRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ProfileRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      displayName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}display_name'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+    );
+  }
+
+  @override
+  $ProfilesTable createAlias(String alias) {
+    return $ProfilesTable(attachedDatabase, alias);
+  }
+}
+
+class ProfileRow extends DataClass implements Insertable<ProfileRow> {
+  final String id;
+  final String displayName;
+  final String role;
+  const ProfileRow({
+    required this.id,
+    required this.displayName,
+    required this.role,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['display_name'] = Variable<String>(displayName);
+    map['role'] = Variable<String>(role);
+    return map;
+  }
+
+  ProfilesCompanion toCompanion(bool nullToAbsent) {
+    return ProfilesCompanion(
+      id: Value(id),
+      displayName: Value(displayName),
+      role: Value(role),
+    );
+  }
+
+  factory ProfileRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ProfileRow(
+      id: serializer.fromJson<String>(json['id']),
+      displayName: serializer.fromJson<String>(json['displayName']),
+      role: serializer.fromJson<String>(json['role']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'displayName': serializer.toJson<String>(displayName),
+      'role': serializer.toJson<String>(role),
+    };
+  }
+
+  ProfileRow copyWith({String? id, String? displayName, String? role}) =>
+      ProfileRow(
+        id: id ?? this.id,
+        displayName: displayName ?? this.displayName,
+        role: role ?? this.role,
+      );
+  ProfileRow copyWithCompanion(ProfilesCompanion data) {
+    return ProfileRow(
+      id: data.id.present ? data.id.value : this.id,
+      displayName: data.displayName.present
+          ? data.displayName.value
+          : this.displayName,
+      role: data.role.present ? data.role.value : this.role,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProfileRow(')
+          ..write('id: $id, ')
+          ..write('displayName: $displayName, ')
+          ..write('role: $role')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, displayName, role);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ProfileRow &&
+          other.id == this.id &&
+          other.displayName == this.displayName &&
+          other.role == this.role);
+}
+
+class ProfilesCompanion extends UpdateCompanion<ProfileRow> {
+  final Value<String> id;
+  final Value<String> displayName;
+  final Value<String> role;
+  final Value<int> rowid;
+  const ProfilesCompanion({
+    this.id = const Value.absent(),
+    this.displayName = const Value.absent(),
+    this.role = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ProfilesCompanion.insert({
+    required String id,
+    required String displayName,
+    this.role = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       displayName = Value(displayName);
+  static Insertable<ProfileRow> custom({
+    Expression<String>? id,
+    Expression<String>? displayName,
+    Expression<String>? role,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (displayName != null) 'display_name': displayName,
+      if (role != null) 'role': role,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ProfilesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? displayName,
+    Value<String>? role,
+    Value<int>? rowid,
+  }) {
+    return ProfilesCompanion(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      role: role ?? this.role,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (displayName.present) {
+      map['display_name'] = Variable<String>(displayName.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ProfilesCompanion(')
+          ..write('id: $id, ')
+          ..write('displayName: $displayName, ')
+          ..write('role: $role, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ScheduleAssignmentsTable extends ScheduleAssignments
+    with TableInfo<$ScheduleAssignmentsTable, ScheduleAssignmentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ScheduleAssignmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serviceDateMeta = const VerificationMeta(
+    'serviceDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> serviceDate = GeneratedColumn<DateTime>(
+    'service_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, serviceDate, userId, role];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'schedule_assignments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ScheduleAssignmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('service_date')) {
+      context.handle(
+        _serviceDateMeta,
+        serviceDate.isAcceptableOrUnknown(
+          data['service_date']!,
+          _serviceDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_serviceDateMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ScheduleAssignmentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ScheduleAssignmentRow(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      serviceDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}service_date'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+      role: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}role'],
+      )!,
+    );
+  }
+
+  @override
+  $ScheduleAssignmentsTable createAlias(String alias) {
+    return $ScheduleAssignmentsTable(attachedDatabase, alias);
+  }
+}
+
+class ScheduleAssignmentRow extends DataClass
+    implements Insertable<ScheduleAssignmentRow> {
+  final String id;
+  final DateTime serviceDate;
+  final String userId;
+  final String role;
+  const ScheduleAssignmentRow({
+    required this.id,
+    required this.serviceDate,
+    required this.userId,
+    required this.role,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['service_date'] = Variable<DateTime>(serviceDate);
+    map['user_id'] = Variable<String>(userId);
+    map['role'] = Variable<String>(role);
+    return map;
+  }
+
+  ScheduleAssignmentsCompanion toCompanion(bool nullToAbsent) {
+    return ScheduleAssignmentsCompanion(
+      id: Value(id),
+      serviceDate: Value(serviceDate),
+      userId: Value(userId),
+      role: Value(role),
+    );
+  }
+
+  factory ScheduleAssignmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ScheduleAssignmentRow(
+      id: serializer.fromJson<String>(json['id']),
+      serviceDate: serializer.fromJson<DateTime>(json['serviceDate']),
+      userId: serializer.fromJson<String>(json['userId']),
+      role: serializer.fromJson<String>(json['role']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'serviceDate': serializer.toJson<DateTime>(serviceDate),
+      'userId': serializer.toJson<String>(userId),
+      'role': serializer.toJson<String>(role),
+    };
+  }
+
+  ScheduleAssignmentRow copyWith({
+    String? id,
+    DateTime? serviceDate,
+    String? userId,
+    String? role,
+  }) => ScheduleAssignmentRow(
+    id: id ?? this.id,
+    serviceDate: serviceDate ?? this.serviceDate,
+    userId: userId ?? this.userId,
+    role: role ?? this.role,
+  );
+  ScheduleAssignmentRow copyWithCompanion(ScheduleAssignmentsCompanion data) {
+    return ScheduleAssignmentRow(
+      id: data.id.present ? data.id.value : this.id,
+      serviceDate: data.serviceDate.present
+          ? data.serviceDate.value
+          : this.serviceDate,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      role: data.role.present ? data.role.value : this.role,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduleAssignmentRow(')
+          ..write('id: $id, ')
+          ..write('serviceDate: $serviceDate, ')
+          ..write('userId: $userId, ')
+          ..write('role: $role')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, serviceDate, userId, role);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ScheduleAssignmentRow &&
+          other.id == this.id &&
+          other.serviceDate == this.serviceDate &&
+          other.userId == this.userId &&
+          other.role == this.role);
+}
+
+class ScheduleAssignmentsCompanion
+    extends UpdateCompanion<ScheduleAssignmentRow> {
+  final Value<String> id;
+  final Value<DateTime> serviceDate;
+  final Value<String> userId;
+  final Value<String> role;
+  final Value<int> rowid;
+  const ScheduleAssignmentsCompanion({
+    this.id = const Value.absent(),
+    this.serviceDate = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ScheduleAssignmentsCompanion.insert({
+    required String id,
+    required DateTime serviceDate,
+    required String userId,
+    required String role,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       serviceDate = Value(serviceDate),
+       userId = Value(userId),
+       role = Value(role);
+  static Insertable<ScheduleAssignmentRow> custom({
+    Expression<String>? id,
+    Expression<DateTime>? serviceDate,
+    Expression<String>? userId,
+    Expression<String>? role,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (serviceDate != null) 'service_date': serviceDate,
+      if (userId != null) 'user_id': userId,
+      if (role != null) 'role': role,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ScheduleAssignmentsCompanion copyWith({
+    Value<String>? id,
+    Value<DateTime>? serviceDate,
+    Value<String>? userId,
+    Value<String>? role,
+    Value<int>? rowid,
+  }) {
+    return ScheduleAssignmentsCompanion(
+      id: id ?? this.id,
+      serviceDate: serviceDate ?? this.serviceDate,
+      userId: userId ?? this.userId,
+      role: role ?? this.role,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (serviceDate.present) {
+      map['service_date'] = Variable<DateTime>(serviceDate.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ScheduleAssignmentsCompanion(')
+          ..write('id: $id, ')
+          ..write('serviceDate: $serviceDate, ')
+          ..write('userId: $userId, ')
+          ..write('role: $role, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDb extends GeneratedDatabase {
   _$AppDb(QueryExecutor e) : super(e);
   $AppDbManager get managers => $AppDbManager(this);
   late final $SongsTable songs = $SongsTable(this);
   late final $SetlistsTable setlists = $SetlistsTable(this);
   late final $SetlistSongsTable setlistSongs = $SetlistSongsTable(this);
+  late final $ProfilesTable profiles = $ProfilesTable(this);
+  late final $ScheduleAssignmentsTable scheduleAssignments =
+      $ScheduleAssignmentsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1220,6 +1798,8 @@ abstract class _$AppDb extends GeneratedDatabase {
     songs,
     setlists,
     setlistSongs,
+    profiles,
+    scheduleAssignments,
   ];
 }
 
@@ -1855,6 +2435,362 @@ typedef $$SetlistSongsTableProcessedTableManager =
       SetlistSongRow,
       PrefetchHooks Function()
     >;
+typedef $$ProfilesTableCreateCompanionBuilder =
+    ProfilesCompanion Function({
+      required String id,
+      required String displayName,
+      Value<String> role,
+      Value<int> rowid,
+    });
+typedef $$ProfilesTableUpdateCompanionBuilder =
+    ProfilesCompanion Function({
+      Value<String> id,
+      Value<String> displayName,
+      Value<String> role,
+      Value<int> rowid,
+    });
+
+class $$ProfilesTableFilterComposer extends Composer<_$AppDb, $ProfilesTable> {
+  $$ProfilesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ProfilesTableOrderingComposer
+    extends Composer<_$AppDb, $ProfilesTable> {
+  $$ProfilesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ProfilesTableAnnotationComposer
+    extends Composer<_$AppDb, $ProfilesTable> {
+  $$ProfilesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get displayName => $composableBuilder(
+    column: $table.displayName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+}
+
+class $$ProfilesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $ProfilesTable,
+          ProfileRow,
+          $$ProfilesTableFilterComposer,
+          $$ProfilesTableOrderingComposer,
+          $$ProfilesTableAnnotationComposer,
+          $$ProfilesTableCreateCompanionBuilder,
+          $$ProfilesTableUpdateCompanionBuilder,
+          (ProfileRow, BaseReferences<_$AppDb, $ProfilesTable, ProfileRow>),
+          ProfileRow,
+          PrefetchHooks Function()
+        > {
+  $$ProfilesTableTableManager(_$AppDb db, $ProfilesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ProfilesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ProfilesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ProfilesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> displayName = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProfilesCompanion(
+                id: id,
+                displayName: displayName,
+                role: role,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String displayName,
+                Value<String> role = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ProfilesCompanion.insert(
+                id: id,
+                displayName: displayName,
+                role: role,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ProfilesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $ProfilesTable,
+      ProfileRow,
+      $$ProfilesTableFilterComposer,
+      $$ProfilesTableOrderingComposer,
+      $$ProfilesTableAnnotationComposer,
+      $$ProfilesTableCreateCompanionBuilder,
+      $$ProfilesTableUpdateCompanionBuilder,
+      (ProfileRow, BaseReferences<_$AppDb, $ProfilesTable, ProfileRow>),
+      ProfileRow,
+      PrefetchHooks Function()
+    >;
+typedef $$ScheduleAssignmentsTableCreateCompanionBuilder =
+    ScheduleAssignmentsCompanion Function({
+      required String id,
+      required DateTime serviceDate,
+      required String userId,
+      required String role,
+      Value<int> rowid,
+    });
+typedef $$ScheduleAssignmentsTableUpdateCompanionBuilder =
+    ScheduleAssignmentsCompanion Function({
+      Value<String> id,
+      Value<DateTime> serviceDate,
+      Value<String> userId,
+      Value<String> role,
+      Value<int> rowid,
+    });
+
+class $$ScheduleAssignmentsTableFilterComposer
+    extends Composer<_$AppDb, $ScheduleAssignmentsTable> {
+  $$ScheduleAssignmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get serviceDate => $composableBuilder(
+    column: $table.serviceDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ScheduleAssignmentsTableOrderingComposer
+    extends Composer<_$AppDb, $ScheduleAssignmentsTable> {
+  $$ScheduleAssignmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get serviceDate => $composableBuilder(
+    column: $table.serviceDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ScheduleAssignmentsTableAnnotationComposer
+    extends Composer<_$AppDb, $ScheduleAssignmentsTable> {
+  $$ScheduleAssignmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get serviceDate => $composableBuilder(
+    column: $table.serviceDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+}
+
+class $$ScheduleAssignmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDb,
+          $ScheduleAssignmentsTable,
+          ScheduleAssignmentRow,
+          $$ScheduleAssignmentsTableFilterComposer,
+          $$ScheduleAssignmentsTableOrderingComposer,
+          $$ScheduleAssignmentsTableAnnotationComposer,
+          $$ScheduleAssignmentsTableCreateCompanionBuilder,
+          $$ScheduleAssignmentsTableUpdateCompanionBuilder,
+          (
+            ScheduleAssignmentRow,
+            BaseReferences<
+              _$AppDb,
+              $ScheduleAssignmentsTable,
+              ScheduleAssignmentRow
+            >,
+          ),
+          ScheduleAssignmentRow,
+          PrefetchHooks Function()
+        > {
+  $$ScheduleAssignmentsTableTableManager(
+    _$AppDb db,
+    $ScheduleAssignmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ScheduleAssignmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ScheduleAssignmentsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$ScheduleAssignmentsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<DateTime> serviceDate = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ScheduleAssignmentsCompanion(
+                id: id,
+                serviceDate: serviceDate,
+                userId: userId,
+                role: role,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required DateTime serviceDate,
+                required String userId,
+                required String role,
+                Value<int> rowid = const Value.absent(),
+              }) => ScheduleAssignmentsCompanion.insert(
+                id: id,
+                serviceDate: serviceDate,
+                userId: userId,
+                role: role,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ScheduleAssignmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDb,
+      $ScheduleAssignmentsTable,
+      ScheduleAssignmentRow,
+      $$ScheduleAssignmentsTableFilterComposer,
+      $$ScheduleAssignmentsTableOrderingComposer,
+      $$ScheduleAssignmentsTableAnnotationComposer,
+      $$ScheduleAssignmentsTableCreateCompanionBuilder,
+      $$ScheduleAssignmentsTableUpdateCompanionBuilder,
+      (
+        ScheduleAssignmentRow,
+        BaseReferences<
+          _$AppDb,
+          $ScheduleAssignmentsTable,
+          ScheduleAssignmentRow
+        >,
+      ),
+      ScheduleAssignmentRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDbManager {
   final _$AppDb _db;
@@ -1865,4 +2801,8 @@ class $AppDbManager {
       $$SetlistsTableTableManager(_db, _db.setlists);
   $$SetlistSongsTableTableManager get setlistSongs =>
       $$SetlistSongsTableTableManager(_db, _db.setlistSongs);
+  $$ProfilesTableTableManager get profiles =>
+      $$ProfilesTableTableManager(_db, _db.profiles);
+  $$ScheduleAssignmentsTableTableManager get scheduleAssignments =>
+      $$ScheduleAssignmentsTableTableManager(_db, _db.scheduleAssignments);
 }

@@ -8,9 +8,14 @@ import '../chordpro/chordpro.dart';
 import 'chord_viewer.dart';
 
 class SongDetailScreen extends ConsumerWidget {
-  const SongDetailScreen({super.key, required this.songId});
+  const SongDetailScreen({super.key, required this.songId, this.targetKey});
 
   final String songId;
+
+  /// Optional target key (e.g. from a setlist's "played_in_key") — when set,
+  /// the chord chart opens already transposed from the song's original key
+  /// to this key.
+  final String? targetKey;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -51,6 +56,7 @@ class SongDetailScreen extends ConsumerWidget {
             artist: s.artist,
             originalKey: s.originalKey,
             chordproBody: s.chordproBody,
+            initialTranspose: ChordPro.semitonesBetween(s.originalKey, targetKey),
           );
         },
       ),
@@ -64,19 +70,21 @@ class _SongBody extends StatefulWidget {
     required this.artist,
     required this.originalKey,
     required this.chordproBody,
+    this.initialTranspose = 0,
   });
 
   final String title;
   final String? artist;
   final String? originalKey;
   final String chordproBody;
+  final int initialTranspose;
 
   @override
   State<_SongBody> createState() => _SongBodyState();
 }
 
 class _SongBodyState extends State<_SongBody> {
-  int _transpose = 0;
+  late int _transpose = widget.initialTranspose;
   double _fontSize = 14;
 
   @override

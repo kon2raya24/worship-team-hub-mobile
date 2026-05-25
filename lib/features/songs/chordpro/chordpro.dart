@@ -245,4 +245,18 @@ class ChordPro {
     if (flatIdx != -1) return flatIdx;
     return null;
   }
+
+  /// Semitone delta from [fromKey] to [toKey] (e.g. G → A = +2).
+  /// Picks the closest direction (wraps -5..+6). Returns 0 if either key
+  /// is null/empty/unrecognized.
+  static int semitonesBetween(String? fromKey, String? toKey) {
+    if (fromKey == null || toKey == null) return 0;
+    final fromRoot = _parseRoot(fromKey);
+    final toRoot = _parseRoot(toKey);
+    if (fromRoot == null || toRoot == null) return 0;
+    var diff = (toRoot.$1 - fromRoot.$1) % 12;
+    if (diff > 6) diff -= 12;
+    if (diff < -5) diff += 12;
+    return diff;
+  }
 }

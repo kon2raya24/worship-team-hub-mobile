@@ -71,41 +71,48 @@ class _SetlistCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final date = setlist.serviceDate;
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+        onTap: () => context.go('/setlists/${setlist.id}'),
+        child: GlassCard(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.calendar_today_outlined,
-                color: Sanctuary.auroraViolet,
-                size: 14,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_outlined,
+                    color: Sanctuary.auroraViolet,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    DateFormat('EEE').format(date).toUpperCase(),
+                    style: Sanctuary.mono(
+                      fontSize: 11,
+                      color: Sanctuary.auroraViolet,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
+              const SizedBox(height: 6),
               Text(
-                DateFormat('EEE').format(date).toUpperCase(),
-                style: Sanctuary.mono(
-                  fontSize: 11,
-                  color: Sanctuary.auroraViolet,
-                ),
+                DateFormat('EEEE, MMM d').format(date),
+                style: Sanctuary.display(fontSize: 20),
               ),
+              if ((setlist.theme ?? '').isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  setlist.theme!,
+                  style: const TextStyle(color: Sanctuary.muted, fontSize: 13),
+                ),
+              ],
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            DateFormat('EEEE, MMM d').format(date),
-            style: Sanctuary.display(fontSize: 20),
-          ),
-          if ((setlist.theme ?? '').isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              setlist.theme!,
-              style: const TextStyle(color: Sanctuary.muted, fontSize: 13),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }

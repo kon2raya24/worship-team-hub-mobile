@@ -49,12 +49,48 @@ class SetlistSongs extends Table {
   Set<Column> get primaryKey => {setlistId, songId};
 }
 
-@DriftDatabase(tables: [Songs, Setlists, SetlistSongs])
+/// Mirrors `public.profiles` — just the bits we need offline (name + role).
+@DataClassName('ProfileRow')
+class Profiles extends Table {
+  TextColumn get id => text()();
+  TextColumn get displayName => text()();
+  TextColumn get role => text().withDefault(const Constant('member'))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Mirrors `public.schedule_assignments`.
+@DataClassName('ScheduleAssignmentRow')
+class ScheduleAssignments extends Table {
+  TextColumn get id => text()();
+  DateTimeColumn get serviceDate => dateTime()();
+  TextColumn get userId => text()();
+  TextColumn get role => text()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(
+  tables: [Songs, Setlists, SetlistSongs, Profiles, ScheduleAssignments],
+)
 class AppDb extends _$AppDb {
   AppDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+        onCreate: (m) => m.createAll(),
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(profiles);
+            await m.createTable(scheduleAssignments);
+          }
+        },
+      );
 
   // ── Songs ────────────────────────────────────────────────────────────
   Stream<List<SongRow>> watchAllSongs() =>
@@ -114,6 +150,69 @@ class AppDb extends _$AppDb {
       });
     });
   }
+
+  // ── Profiles ─────────────────────────────────────────────────────────
+  Future<ProfileRow?> getProfile(String id) =>
+      (select(profiles)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<void> upsertProfiles(List<ProfilesCompanion> rows) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      for (final row in rows) {
+        b.insert(profiles, row, mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
+
+  // ── Schedule assignments ─────────────────────────────────────────────
+  /// Watches upcoming assignments joined to member display name.
+  Stream<List<UpcomingAssignment>> watchUpcomingAssignments() {
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final query = (select(scheduleAssignments).join([
+      leftOuterJoin(
+        profiles,
+        profiles.id.equalsExp(scheduleAssignments.userId),
+      ),
+    ])
+      ..where(scheduleAssignments.serviceDate.isBiggerOrEqualValue(startOfDay))
+      ..orderBy([
+        OrderingTerm.asc(scheduleAssignments.serviceDate),
+        OrderingTerm.asc(scheduleAssignments.role),
+      ]));
+    return query.watch().map((rows) {
+      return rows.map((row) {
+        final a = row.readTable(scheduleAssignments);
+        final p = row.readTableOrNull(profiles);
+        return UpcomingAssignment(
+          assignment: a,
+          memberName: p?.displayName ?? 'Member',
+        );
+      }).toList();
+    });
+  }
+
+  Future<void> replaceUpcomingAssignments(
+    List<ScheduleAssignmentsCompanion> rows,
+  ) async {
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    await transaction(() async {
+      await (delete(scheduleAssignments)
+            ..where((t) => t.serviceDate.isBiggerOrEqualValue(startOfDay)))
+          .go();
+      if (rows.isEmpty) return;
+      await batch((b) {
+        b.insertAll(scheduleAssignments, rows);
+      });
+    });
+  }
+}
+
+class UpcomingAssignment {
+  UpcomingAssignment({required this.assignment, required this.memberName});
+  final ScheduleAssignmentRow assignment;
+  final String memberName;
 }
 
 LazyDatabase _openConnection() {

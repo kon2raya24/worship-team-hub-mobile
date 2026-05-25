@@ -10,6 +10,8 @@ import '../features/home/ui/home_screen.dart';
 import '../features/songs/ui/songs_list_screen.dart';
 import '../features/songs/ui/song_detail_screen.dart';
 import '../features/setlists/ui/setlists_list_screen.dart';
+import '../features/setlists/ui/setlist_detail_screen.dart';
+import '../features/schedule/ui/schedule_screen.dart';
 import 'supabase_client.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -31,12 +33,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/songs', builder: (_, __) => const SongsListScreen()),
       GoRoute(
         path: '/songs/:id',
-        builder: (_, state) =>
-            SongDetailScreen(songId: state.pathParameters['id']!),
+        builder: (_, state) => SongDetailScreen(
+          songId: state.pathParameters['id']!,
+          targetKey: state.uri.queryParameters['key'],
+        ),
       ),
       GoRoute(
         path: '/setlists',
         builder: (_, __) => const SetlistsListScreen(),
+      ),
+      GoRoute(
+        path: '/setlists/:id',
+        builder: (_, state) =>
+            SetlistDetailScreen(setlistId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/schedule',
+        builder: (_, __) => const ScheduleScreen(),
       ),
     ],
   );
