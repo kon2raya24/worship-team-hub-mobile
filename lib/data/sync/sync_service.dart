@@ -218,6 +218,33 @@ class SyncService {
     await _db.upsertAnnouncements(companions);
   }
 
+  /// Toggle "answered" on a prayer request. Author or leader per web RLS.
+  Future<bool> setPrayerAnswered(String id, bool answered) async {
+    try {
+      await supabase
+          .from('prayer_requests')
+          .update({'is_answered': answered})
+          .eq('id', id);
+      await _syncPrayerRequests();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Set prayer answered failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Delete a prayer request. Author or leader per web RLS.
+  Future<bool> deletePrayerRequest(String id) async {
+    try {
+      await supabase.from('prayer_requests').delete().eq('id', id);
+      await _syncPrayerRequests();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete prayer failed: $e\n$st');
+      return false;
+    }
+  }
+
   Future<bool> postPrayerRequest(String body) async {
     final user = supabase.auth.currentUser;
     if (user == null) return false;
@@ -508,6 +535,26 @@ class SyncService {
       return true;
     } catch (e, st) {
       if (kDebugMode) debugPrint('Unassign failed: $e\n$st');
+      return false;
+    }
+  }
+
+  // ── Profile (self-update) ─────────────────────────────────────────
+  Future<bool> updateMyProfile({
+    required String displayName,
+    List<String>? instruments,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return false;
+    try {
+      await supabase.from('profiles').update({
+        'display_name': displayName,
+        if (instruments != null) 'instruments': instruments,
+      }).eq('id', user.id);
+      await _syncProfilesAndSchedule();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Update profile failed: $e\n$st');
       return false;
     }
   }

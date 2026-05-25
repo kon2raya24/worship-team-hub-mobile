@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../chordpro/chord_line_parse.dart';
 
 class SongComposeScreen extends ConsumerStatefulWidget {
   /// Pass [songId] to edit an existing song; null for create.
@@ -217,8 +218,38 @@ class _SongComposeScreenState extends ConsumerState<SongComposeScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text('CHORDPRO BODY',
-                      style: Sanctuary.mono(fontSize: 10)),
+                  Row(
+                    children: [
+                      Text('CHORDPRO BODY',
+                          style: Sanctuary.mono(fontSize: 10)),
+                      const Spacer(),
+                      TextButton.icon(
+                        onPressed: () {
+                          final input = _chordpro.text;
+                          if (input.trim().isEmpty) return;
+                          final converted = convertChordOverLyrics(input);
+                          if (converted == input) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Body already looks like ChordPro — nothing changed.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          setState(() => _chordpro.text = converted);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Converted chord lines to inline ChordPro.'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.auto_fix_high, size: 14),
+                        label: const Text('Convert chord lines'),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 4),
                   TextField(
                     controller: _chordpro,

@@ -4,9 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/theme.dart';
+import '../../../core/supabase_client.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class PrayerScreen extends ConsumerStatefulWidget {
   const PrayerScreen({super.key});
@@ -137,13 +139,16 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
   }
 }
 
-class _Card extends StatelessWidget {
+class _Card extends ConsumerWidget {
   const _Card({required this.p});
   final PrayerRequestRow p;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final author = (p.authorName ?? '').isEmpty ? 'Anonymous' : p.authorName!;
+    final isLeader = ref.watch(isLeaderProvider);
+    final isAuthor = supabase.auth.currentUser?.id == p.authorId;
+    final canManage = isLeader || isAuthor;
     return GlassCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -173,6 +178,68 @@ class _Card extends StatelessWidget {
                           fontSize: 9,
                           color: Sanctuary.success,
                           fontWeight: FontWeight.w700)),
+                ),
+              if (canManage)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz,
+                      size: 18, color: Sanctuary.muted),
+                  color: Sanctuary.ink2,
+                  onSelected: (v) async {
+                    if (v == 'answered') {
+                      await ref
+                          .read(syncServiceProvider)
+                          .setPrayerAnswered(p.id, !p.isAnswered);
+                    } else if (v == 'delete') {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: Sanctuary.ink2,
+                          title: const Text('Delete request?'),
+                          content: const Text('This can\'t be undone.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Sanctuary.destructive,
+                              ),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok == true) {
+                        await ref
+                            .read(syncServiceProvider)
+                            .deletePrayerRequest(p.id);
+                      }
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'answered',
+                      child: Row(children: [
+                        Icon(p.isAnswered
+                            ? Icons.refresh
+                            : Icons.check_circle_outline),
+                        const SizedBox(width: 8),
+                        Text(p.isAnswered ? 'Mark unanswered' : 'Mark answered'),
+                      ]),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(children: [
+                        Icon(Icons.delete_outline,
+                            color: Sanctuary.destructive),
+                        SizedBox(width: 8),
+                        Text('Delete',
+                            style: TextStyle(color: Sanctuary.destructive)),
+                      ]),
+                    ),
+                  ],
                 ),
             ],
           ),

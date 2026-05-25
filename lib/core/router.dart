@@ -27,6 +27,7 @@ import '../features/games/ui/games_index_screen.dart';
 import '../features/games/ui/transpose_game_screen.dart';
 import '../features/games/ui/keys_game_screen.dart';
 import '../features/games/ui/bpm_game_screen.dart';
+import '../features/settings/ui/settings_screen.dart';
 import 'supabase_client.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -133,6 +134,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/games/bpm',
         builder: (_, __) => const BpmGameScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (_, __) => const SettingsScreen(),
       ),
     ],
   );

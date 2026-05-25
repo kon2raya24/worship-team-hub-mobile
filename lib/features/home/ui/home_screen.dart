@@ -24,7 +24,14 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final email = currentUser?.email ?? 'team';
+    final profile = ref.watch(currentProfileProvider).value;
+    final name = (profile?.displayName ?? '').trim();
+    final email = currentUser?.email ?? '';
+    final greetTarget = name.isNotEmpty
+        ? name
+        : email.isNotEmpty
+            ? email.split('@').first
+            : 'team';
     final offline = ref.watch(offlineModeProvider);
     // Fire-and-forget initial sync. Errors are surfaced via the badge below.
     final sync = offline ? const AsyncValue<SyncResult>.data(SyncResult.skipped)
@@ -46,6 +53,11 @@ class HomeScreen extends ConsumerWidget {
                 : () => ref.refresh(startupSyncProvider.future),
           ),
           IconButton(
+            icon: const Icon(Icons.settings_outlined, size: 20),
+            tooltip: 'Settings',
+            onPressed: () => context.push('/settings'),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',
             onPressed: () => _signOut(context),
@@ -54,73 +66,90 @@ class HomeScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text('Signed in as $email', style: Sanctuary.mono(fontSize: 11)),
+            Text('SIGNED IN AS', style: Sanctuary.mono(fontSize: 10)),
+            const SizedBox(height: 2),
+            Text(
+              greetTarget,
+              style: Sanctuary.mono(
+                fontSize: 12,
+                color: Sanctuary.foreground,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.05,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text('Welcome back', style: Sanctuary.display(fontSize: 28)),
-            const SizedBox(height: 12),
+            Text('Welcome back', style: Sanctuary.display(fontSize: 26)),
+            const SizedBox(height: 10),
             if (offline)
               _OfflineBanner()
             else
               _SyncBadge(state: sync, online: online),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             const _BiometricToggle(),
-            const SizedBox(height: 16),
-            _HomeTile(
-              title: 'Songs',
-              subtitle: 'Chord charts · offline',
-              icon: Icons.library_music_outlined,
-              accent: Sanctuary.auroraViolet,
-              onTap: () => context.push('/songs'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Setlists',
-              subtitle: 'Upcoming services',
-              icon: Icons.queue_music_outlined,
-              accent: Sanctuary.auroraCyan,
-              onTap: () => context.push('/setlists'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Schedule',
-              subtitle: 'Sunday roster',
-              icon: Icons.calendar_month_outlined,
-              accent: Sanctuary.auroraMagenta,
-              onTap: () => context.push('/schedule'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Devotions',
-              subtitle: 'Weekly reflections',
-              icon: Icons.menu_book_outlined,
-              accent: Sanctuary.auroraAmber,
-              onTap: () => context.push('/devotions'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Prayer',
-              subtitle: 'Requests + answered',
-              icon: Icons.favorite_outline,
-              accent: Sanctuary.auroraMagenta,
-              onTap: () => context.push('/prayer'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Announcements',
-              subtitle: 'Team updates',
-              icon: Icons.campaign_outlined,
-              accent: Sanctuary.auroraCyan,
-              onTap: () => context.push('/announcements'),
-            ),
-            const SizedBox(height: 12),
-            _HomeTile(
-              title: 'Games',
-              subtitle: 'Music-theory warm-ups',
-              icon: Icons.sports_esports_outlined,
-              accent: Sanctuary.auroraViolet,
-              onTap: () => context.push('/games'),
+            const SizedBox(height: 20),
+
+            // Two-column tile grid — feels denser on phones and lets us
+            // surface every module without an endless vertical scroll.
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.08,
+              children: const [
+                _HomeTile(
+                  title: 'Songs',
+                  subtitle: 'Chord charts',
+                  icon: Icons.library_music_outlined,
+                  accent: Sanctuary.auroraViolet,
+                  path: '/songs',
+                ),
+                _HomeTile(
+                  title: 'Setlists',
+                  subtitle: 'Sunday plans',
+                  icon: Icons.queue_music_outlined,
+                  accent: Sanctuary.auroraCyan,
+                  path: '/setlists',
+                ),
+                _HomeTile(
+                  title: 'Schedule',
+                  subtitle: 'Team roster',
+                  icon: Icons.calendar_month_outlined,
+                  accent: Sanctuary.auroraMagenta,
+                  path: '/schedule',
+                ),
+                _HomeTile(
+                  title: 'Devotions',
+                  subtitle: 'Weekly reflections',
+                  icon: Icons.menu_book_outlined,
+                  accent: Sanctuary.auroraAmber,
+                  path: '/devotions',
+                ),
+                _HomeTile(
+                  title: 'Prayer',
+                  subtitle: 'Requests + answered',
+                  icon: Icons.favorite_outline,
+                  accent: Sanctuary.auroraMagenta,
+                  path: '/prayer',
+                ),
+                _HomeTile(
+                  title: 'Announcements',
+                  subtitle: 'Team updates',
+                  icon: Icons.campaign_outlined,
+                  accent: Sanctuary.auroraCyan,
+                  path: '/announcements',
+                ),
+                _HomeTile(
+                  title: 'Games',
+                  subtitle: 'Music drills',
+                  icon: Icons.sports_esports_outlined,
+                  accent: Sanctuary.auroraViolet,
+                  path: '/games',
+                ),
+              ],
             ),
           ],
         ),
@@ -491,14 +520,14 @@ class _HomeTile extends StatelessWidget {
     required this.subtitle,
     required this.icon,
     required this.accent,
-    required this.onTap,
+    required this.path,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
   final Color accent;
-  final VoidCallback onTap;
+  final String path;
 
   @override
   Widget build(BuildContext context) {
@@ -506,44 +535,54 @@ class _HomeTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-        onTap: onTap,
-        child: GlassCard(
-          child: Row(
+        onTap: () => context.push(path),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                accent.withValues(alpha: 0.07),
+                Sanctuary.glass1,
+              ],
+            ),
+            border: Border.all(color: accent.withValues(alpha: 0.18)),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  border: Border.all(color: accent.withValues(alpha: 0.3)),
+                  color: accent.withValues(alpha: 0.15),
+                  border: Border.all(color: accent.withValues(alpha: 0.35)),
                   borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
                 ),
                 child: Icon(icon, color: accent, size: 22),
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Sanctuary.display(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        color: Sanctuary.muted,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
+              const Spacer(),
+              Text(
+                title,
+                style: Sanctuary.display(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const Icon(Icons.chevron_right, color: Sanctuary.muted),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  color: Sanctuary.muted,
+                  fontSize: 11.5,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
