@@ -47,6 +47,10 @@ dependencies:
   # Local prefs
   shared_preferences: ^2.3.2
 
+  # Biometric unlock
+  local_auth: ^2.3.0
+  local_auth_android: ^1.0.46
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
