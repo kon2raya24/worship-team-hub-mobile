@@ -8,9 +8,18 @@ import '../../../core/theme.dart';
 import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/biometric_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
+
+  Future<void> _signOut(WidgetRef ref) async {
+    // Clear the biometric preference too so the next account doesn't inherit it.
+    final bio = ref.read(biometricServiceProvider);
+    await bio?.setEnabled(false);
+    ref.read(unlockSessionProvider.notifier).relock();
+    await supabase.auth.signOut();
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -36,7 +45,7 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',
-            onPressed: () => supabase.auth.signOut(),
+            onPressed: () => _signOut(ref),
           ),
         ],
       ),
@@ -49,13 +58,15 @@ class HomeScreen extends ConsumerWidget {
             Text('Welcome back', style: Sanctuary.display(fontSize: 28)),
             const SizedBox(height: 12),
             _SyncBadge(state: sync, online: online),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+            const _BiometricToggle(),
+            const SizedBox(height: 16),
             _HomeTile(
               title: 'Songs',
               subtitle: 'Chord charts · offline',
               icon: Icons.library_music_outlined,
               accent: Sanctuary.auroraViolet,
-              onTap: () => context.go('/songs'),
+              onTap: () => context.push('/songs'),
             ),
             const SizedBox(height: 12),
             _HomeTile(
@@ -63,7 +74,7 @@ class HomeScreen extends ConsumerWidget {
               subtitle: 'Upcoming services',
               icon: Icons.queue_music_outlined,
               accent: Sanctuary.auroraCyan,
-              onTap: () => context.go('/setlists'),
+              onTap: () => context.push('/setlists'),
             ),
             const SizedBox(height: 12),
             _HomeTile(
@@ -71,7 +82,7 @@ class HomeScreen extends ConsumerWidget {
               subtitle: 'Sunday roster',
               icon: Icons.calendar_month_outlined,
               accent: Sanctuary.auroraMagenta,
-              onTap: () => context.go('/schedule'),
+              onTap: () => context.push('/schedule'),
             ),
           ],
         ),
@@ -121,6 +132,112 @@ class _SyncBadge extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label, style: Sanctuary.mono(fontSize: 11, color: color)),
       ],
+    );
+  }
+}
+
+/// One-tap enrollment card for biometric unlock. Hides itself if the device
+/// has no biometric support, OR if the user has already enabled it.
+class _BiometricToggle extends ConsumerStatefulWidget {
+  const _BiometricToggle();
+
+  @override
+  ConsumerState<_BiometricToggle> createState() => _BiometricToggleState();
+}
+
+class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
+  bool? _canCheck;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _probe();
+  }
+
+  Future<void> _probe() async {
+    final svc = ref.read(biometricServiceProvider);
+    final can = await svc?.canCheckBiometrics() ?? false;
+    if (mounted) setState(() => _canCheck = can);
+  }
+
+  Future<void> _enable() async {
+    final svc = ref.read(biometricServiceProvider);
+    if (svc == null || _busy) return;
+    setState(() => _busy = true);
+    final ok = await svc.authenticate(
+      reason: 'Enable biometric unlock for Worship Hub',
+    );
+    if (!mounted) return;
+    if (ok) {
+      await svc.setEnabled(true);
+      ref.read(unlockSessionProvider.notifier).unlock();
+    }
+    setState(() => _busy = false);
+  }
+
+  Future<void> _disable() async {
+    final svc = ref.read(biometricServiceProvider);
+    await svc?.setEnabled(false);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final svc = ref.watch(biometricServiceProvider);
+    if (svc == null || _canCheck != true) return const SizedBox.shrink();
+
+    final enabled = svc.isEnabled;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+      decoration: BoxDecoration(
+        color: Sanctuary.glass1,
+        border: Border.all(color: Sanctuary.hairline),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.fingerprint,
+            size: 22,
+            color: enabled ? Sanctuary.auroraCyan : Sanctuary.muted,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Biometric unlock',
+                  style: Sanctuary.display(fontSize: 14),
+                ),
+                Text(
+                  enabled
+                      ? 'On · ask each time the app opens'
+                      : 'Off · use fingerprint or face',
+                  style: const TextStyle(
+                    color: Sanctuary.muted,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: enabled,
+            onChanged: _busy
+                ? null
+                : (v) {
+                    if (v) {
+                      _enable();
+                    } else {
+                      _disable();
+                    }
+                  },
+            activeThumbColor: Sanctuary.auroraCyan,
+          ),
+        ],
+      ),
     );
   }
 }

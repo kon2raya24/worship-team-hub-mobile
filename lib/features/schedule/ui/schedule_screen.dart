@@ -20,7 +20,7 @@ class ScheduleScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text('Sunday schedule'),
       ),

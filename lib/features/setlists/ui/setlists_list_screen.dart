@@ -20,7 +20,7 @@ class SetlistsListScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text('Setlists'),
       ),
@@ -75,7 +75,7 @@ class _SetlistCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-        onTap: () => context.go('/setlists/${setlist.id}'),
+        onTap: () => context.push('/setlists/${setlist.id}'),
         child: GlassCard(
           padding: const EdgeInsets.all(16),
           child: Column(

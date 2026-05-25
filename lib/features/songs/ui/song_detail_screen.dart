@@ -29,7 +29,7 @@ class SongDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/songs'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/songs'),
         ),
         title: const Text('Chord chart'),
       ),

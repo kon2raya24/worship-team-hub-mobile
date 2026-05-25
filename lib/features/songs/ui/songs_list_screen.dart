@@ -19,7 +19,7 @@ class SongsListScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/'),
         ),
         title: const Text('Songs'),
       ),
@@ -79,7 +79,7 @@ class _SongRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-        onTap: () => context.go('/songs/${song.id}'),
+        onTap: () => context.push('/songs/${song.id}'),
         child: GlassCard(
           padding: const EdgeInsets.all(16),
           child: Row(

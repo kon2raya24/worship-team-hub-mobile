@@ -26,7 +26,7 @@ class SetlistDetailScreen extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.go('/setlists'),
+          onPressed: () => context.canPop() ? context.pop() : context.go('/setlists'),
         ),
         title: const Text('Setlist'),
       ),
@@ -146,7 +146,7 @@ class _SetlistSongRow extends StatelessWidget {
           final query = (playedKey ?? '').isNotEmpty
               ? '?key=${Uri.encodeQueryComponent(playedKey!)}'
               : '';
-          context.go('/songs/${song.id}$query');
+          context.push('/songs/${song.id}$query');
         },
         child: GlassCard(
           padding: const EdgeInsets.all(14),
