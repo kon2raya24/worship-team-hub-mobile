@@ -2,13 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
-
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
 import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_errors.dart';
 import '../../auth/biometric_service.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -227,10 +226,10 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
           ),
         );
       }
-    } on AuthException catch (e) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Password check failed: ${e.message}')),
+          SnackBar(content: Text(friendlyAuthError(e))),
         );
       }
     } finally {

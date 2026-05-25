@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../auth_errors.dart';
 import 'brand_mark.dart';
 
 class SignupScreen extends ConsumerStatefulWidget {
@@ -64,8 +64,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         // Signed in automatically — router redirect lands on /
         context.go('/');
       }
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }

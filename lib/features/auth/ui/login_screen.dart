@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../auth_errors.dart';
 import '../biometric_service.dart';
 import 'brand_mark.dart';
 
@@ -96,8 +96,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await _persistRememberMe(email);
       if (!mounted) return;
       await _offerBiometricEnrollment(email, password);
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -131,10 +131,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         email: creds.email,
         password: creds.password,
       );
-    } on AuthException catch (e) {
+    } catch (e) {
       if (mounted) {
         setState(() {
-          _error = '${e.message} — type your password to re-enrol.';
+          _error = '${friendlyAuthError(e)} Type your password to re-enrol.';
           _email.text = creds.email;
         });
         await svc.disable();

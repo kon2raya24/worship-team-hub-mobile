@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../auth_errors.dart';
 import 'brand_mark.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -40,8 +39,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     try {
       await supabase.auth.resetPasswordForEmail(email);
       if (mounted) setState(() => _sent = true);
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted) setState(() => _error = friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
