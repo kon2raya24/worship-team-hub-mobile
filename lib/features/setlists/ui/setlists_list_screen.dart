@@ -7,6 +7,7 @@ import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class SetlistsListScreen extends ConsumerWidget {
   const SetlistsListScreen({super.key});
@@ -14,6 +15,7 @@ class SetlistsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final setlists = ref.watch(upcomingSetlistsStreamProvider);
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -24,6 +26,15 @@ class SetlistsListScreen extends ConsumerWidget {
         ),
         title: const Text('Setlists'),
       ),
+      floatingActionButton: isLeader
+          ? FloatingActionButton.extended(
+              backgroundColor: Sanctuary.auroraCyan,
+              foregroundColor: Sanctuary.ink0,
+              onPressed: () => context.push('/setlists/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('New'),
+            )
+          : null,
       body: setlists.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

@@ -74,3 +74,8 @@ final announcementsStreamProvider =
     StreamProvider<List<AnnouncementRow>>((ref) {
   return ref.watch(appDbProvider).watchAnnouncements();
 });
+
+/// All synced team members — used by the schedule editor's member picker.
+final allProfilesProvider = FutureProvider<List<ProfileRow>>((ref) {
+  return ref.watch(appDbProvider).allProfiles();
+});

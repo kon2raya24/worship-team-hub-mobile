@@ -6,11 +6,51 @@ import 'package:intl/intl.dart';
 import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
+import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class SetlistDetailScreen extends ConsumerWidget {
   const SetlistDetailScreen({super.key, required this.setlistId});
 
   final String setlistId;
+
+  Future<void> _confirmDeleteSetlist(
+      BuildContext context, WidgetRef ref) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Sanctuary.ink2,
+        title: const Text('Delete setlist?'),
+        content: const Text(
+          'The Sunday plan and song order will be removed for the whole team.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Sanctuary.destructive,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted =
+        await ref.read(syncServiceProvider).deleteSetlist(setlistId);
+    if (!context.mounted) return;
+    if (deleted) {
+      context.go('/setlists');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Delete failed.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,6 +60,7 @@ class SetlistDetailScreen extends ConsumerWidget {
       data: (list) => list.where((s) => s.id == setlistId).firstOrNull,
       orElse: () => null,
     );
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -29,7 +70,26 @@ class SetlistDetailScreen extends ConsumerWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/setlists'),
         ),
         title: const Text('Setlist'),
+        actions: [
+          if (isLeader)
+            IconButton(
+              icon: const Icon(Icons.delete_outline,
+                  size: 20, color: Sanctuary.destructive),
+              tooltip: 'Delete setlist',
+              onPressed: () => _confirmDeleteSetlist(context, ref),
+            ),
+        ],
       ),
+      floatingActionButton: isLeader
+          ? FloatingActionButton.extended(
+              backgroundColor: Sanctuary.auroraCyan,
+              foregroundColor: Sanctuary.ink0,
+              onPressed: () =>
+                  context.push('/setlists/$setlistId/add-song'),
+              icon: const Icon(Icons.library_music_outlined),
+              label: const Text('Add song'),
+            )
+          : null,
       body: songs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -61,6 +121,8 @@ class SetlistDetailScreen extends ConsumerWidget {
                         child: _SetlistSongRow(
                           position: entry.key + 1,
                           item: entry.value,
+                          isLeader: isLeader,
+                          setlistId: setlistId,
                         ),
                       ),
                     ),
@@ -126,14 +188,21 @@ class _SetlistHeader extends StatelessWidget {
   }
 }
 
-class _SetlistSongRow extends StatelessWidget {
-  const _SetlistSongRow({required this.position, required this.item});
+class _SetlistSongRow extends ConsumerWidget {
+  const _SetlistSongRow({
+    required this.position,
+    required this.item,
+    required this.isLeader,
+    required this.setlistId,
+  });
 
   final int position;
   final SetlistSongWithSong item;
+  final bool isLeader;
+  final String setlistId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final song = item.song;
     final playedKey = item.join.playedInKey;
     final displayKey =
@@ -217,6 +286,24 @@ class _SetlistSongRow extends StatelessWidget {
                   ),
                 ),
               ],
+              if (isLeader)
+                IconButton(
+                  icon: const Icon(Icons.close,
+                      size: 18, color: Sanctuary.muted),
+                  tooltip: 'Remove from setlist',
+                  onPressed: () async {
+                    final ok = await ref
+                        .read(syncServiceProvider)
+                        .removeSongFromSetlist(setlistId, song.id);
+                    if (!context.mounted) return;
+                    if (!ok) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Could not remove song.')),
+                      );
+                    }
+                  },
+                ),
             ],
           ),
         ),

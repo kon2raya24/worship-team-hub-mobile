@@ -13,6 +13,8 @@ import '../features/songs/ui/songs_list_screen.dart';
 import '../features/songs/ui/song_detail_screen.dart';
 import '../features/setlists/ui/setlists_list_screen.dart';
 import '../features/setlists/ui/setlist_detail_screen.dart';
+import '../features/setlists/ui/setlist_compose_screen.dart';
+import '../features/setlists/ui/setlist_add_song_screen.dart';
 import '../features/schedule/ui/schedule_screen.dart';
 import '../features/devotions/ui/devotions_list_screen.dart';
 import '../features/devotions/ui/devotion_detail_screen.dart';
@@ -74,9 +76,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const SetlistsListScreen(),
       ),
       GoRoute(
+        path: '/setlists/new',
+        builder: (_, __) => const SetlistComposeScreen(),
+      ),
+      GoRoute(
         path: '/setlists/:id',
         builder: (_, state) =>
             SetlistDetailScreen(setlistId: state.pathParameters['id']!),
+      ),
+      GoRoute(
+        path: '/setlists/:id/add-song',
+        builder: (_, state) =>
+            SetlistAddSongScreen(setlistId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/schedule',

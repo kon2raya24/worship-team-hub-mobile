@@ -7,6 +7,18 @@ import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
+
+const _roles = [
+  'lead_vocal',
+  'vocals',
+  'acoustic',
+  'electric',
+  'bass',
+  'keys',
+  'drums',
+  'tech',
+];
 
 class ScheduleScreen extends ConsumerWidget {
   const ScheduleScreen({super.key});
@@ -14,6 +26,7 @@ class ScheduleScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final assignments = ref.watch(upcomingScheduleStreamProvider);
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -27,81 +40,111 @@ class ScheduleScreen extends ConsumerWidget {
       body: assignments.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-          child: Text(
-            'Failed to load schedule.\n$e',
-            style: const TextStyle(color: Sanctuary.muted),
-          ),
+          child: Text('Failed to load schedule.\n$e',
+              style: const TextStyle(color: Sanctuary.muted)),
         ),
         data: (rows) {
-          final grouped = _groupByDate(rows);
+          final dates = _nextFourSundays();
+          final byDate = <DateTime, List<UpcomingAssignment>>{};
+          for (final r in rows) {
+            final d = DateTime(
+              r.assignment.serviceDate.year,
+              r.assignment.serviceDate.month,
+              r.assignment.serviceDate.day,
+            );
+            byDate.putIfAbsent(d, () => []).add(r);
+          }
           return RefreshIndicator(
             color: Sanctuary.auroraCyan,
             onRefresh: () => ref.read(syncServiceProvider).syncAll(),
-            child: grouped.isEmpty
-                ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 120),
-                      Center(
-                        child: Text(
-                          'No upcoming assignments.\nPull to sync.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Sanctuary.muted),
-                        ),
-                      ),
-                    ],
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: grouped.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (_, i) {
-                      final entry = grouped[i];
-                      return _ScheduleCard(
-                        date: entry.key,
-                        assignments: entry.value,
-                        isFirst: i == 0,
-                      );
-                    },
-                  ),
+            child: ListView.separated(
+              padding: const EdgeInsets.all(16),
+              itemCount: dates.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (_, i) => _ScheduleCard(
+                date: dates[i],
+                assignments: byDate[dates[i]] ?? [],
+                isFirst: i == 0,
+                isLeader: isLeader,
+              ),
+            ),
           );
         },
       ),
     );
   }
 
-  List<MapEntry<DateTime, List<UpcomingAssignment>>> _groupByDate(
-    List<UpcomingAssignment> rows,
-  ) {
-    final map = <DateTime, List<UpcomingAssignment>>{};
-    for (final r in rows) {
-      final date = DateTime(
-        r.assignment.serviceDate.year,
-        r.assignment.serviceDate.month,
-        r.assignment.serviceDate.day,
-      );
-      map.putIfAbsent(date, () => []).add(r);
+  List<DateTime> _nextFourSundays() {
+    final now = DateTime.now();
+    final dow = now.weekday;
+    final daysToSunday = dow == 7 ? 0 : 7 - dow;
+    var s = DateTime(now.year, now.month, now.day)
+        .add(Duration(days: daysToSunday));
+    final out = <DateTime>[];
+    for (var i = 0; i < 4; i++) {
+      out.add(s);
+      s = s.add(const Duration(days: 7));
     }
-    final entries = map.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
-    return entries;
+    return out;
   }
 }
 
-class _ScheduleCard extends StatelessWidget {
+class _ScheduleCard extends ConsumerStatefulWidget {
   const _ScheduleCard({
     required this.date,
     required this.assignments,
     required this.isFirst,
+    required this.isLeader,
   });
 
   final DateTime date;
   final List<UpcomingAssignment> assignments;
   final bool isFirst;
+  final bool isLeader;
+
+  @override
+  ConsumerState<_ScheduleCard> createState() => _ScheduleCardState();
+}
+
+class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
+  ProfileRow? _picked;
+  String _role = _roles.first;
+  bool _busy = false;
+
+  Future<void> _add() async {
+    final p = _picked;
+    if (p == null || _busy) return;
+    setState(() => _busy = true);
+    final ok = await ref.read(syncServiceProvider).assignToSchedule(
+          serviceDate: widget.date,
+          userId: p.id,
+          role: _role,
+        );
+    if (!mounted) return;
+    if (ok) {
+      setState(() => _picked = null);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not assign — check connection.')),
+      );
+    }
+    setState(() => _busy = false);
+  }
+
+  Future<void> _remove(UpcomingAssignment a) async {
+    final ok = await ref.read(syncServiceProvider).unassignSchedule(a.assignment.id);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not remove.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final accent = isFirst ? Sanctuary.auroraCyan : Sanctuary.auroraViolet;
+    final accent =
+        widget.isFirst ? Sanctuary.auroraCyan : Sanctuary.auroraViolet;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -109,63 +152,176 @@ class _ScheduleCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(
-                isFirst ? 'THIS SUNDAY' : 'UPCOMING',
-                style: Sanctuary.mono(fontSize: 10, color: accent),
-              ),
+              Text(widget.isFirst ? 'THIS SUNDAY' : 'UPCOMING',
+                  style: Sanctuary.mono(fontSize: 10, color: accent)),
               const Spacer(),
-              Text(
-                '${assignments.length} assigned',
-                style: const TextStyle(color: Sanctuary.muted, fontSize: 11),
-              ),
+              Text('${widget.assignments.length} assigned',
+                  style: const TextStyle(
+                      color: Sanctuary.muted, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 4),
-          Text(
-            DateFormat('EEEE, MMM d').format(date),
-            style: Sanctuary.display(fontSize: 18),
-          ),
+          Text(DateFormat('EEEE, MMM d').format(widget.date),
+              style: Sanctuary.display(fontSize: 18)),
           const SizedBox(height: 12),
-          ...assignments.map(_assignmentRow),
+          if (widget.assignments.isEmpty)
+            const Text(
+              'No assignments yet.',
+              style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+            )
+          else
+            ...widget.assignments.map((a) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Sanctuary.auroraCyan.withValues(alpha: 0.1),
+                          border: Border.all(
+                              color: Sanctuary.auroraCyan
+                                  .withValues(alpha: 0.25)),
+                          borderRadius:
+                              BorderRadius.circular(Sanctuary.radiusSm),
+                        ),
+                        child: Text(
+                          a.assignment.role.toUpperCase(),
+                          style: Sanctuary.mono(
+                              fontSize: 9,
+                              color: Sanctuary.auroraCyan,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          a.memberName,
+                          style: const TextStyle(
+                              color: Sanctuary.foreground, fontSize: 14),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (widget.isLeader)
+                        IconButton(
+                          icon: const Icon(Icons.close,
+                              size: 16, color: Sanctuary.muted),
+                          tooltip: 'Remove',
+                          onPressed: () => _remove(a),
+                        ),
+                    ],
+                  ),
+                )),
+          if (widget.isLeader) ...[
+            const Divider(color: Sanctuary.hairline, height: 24),
+            _AssignForm(
+              picked: _picked,
+              role: _role,
+              busy: _busy,
+              onMemberChanged: (p) => setState(() => _picked = p),
+              onRoleChanged: (r) => setState(() => _role = r),
+              onAdd: _add,
+            ),
+          ],
         ],
       ),
     );
   }
+}
 
-  Widget _assignmentRow(UpcomingAssignment a) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
+class _AssignForm extends ConsumerWidget {
+  const _AssignForm({
+    required this.picked,
+    required this.role,
+    required this.busy,
+    required this.onMemberChanged,
+    required this.onRoleChanged,
+    required this.onAdd,
+  });
+
+  final ProfileRow? picked;
+  final String role;
+  final bool busy;
+  final ValueChanged<ProfileRow?> onMemberChanged;
+  final ValueChanged<String> onRoleChanged;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profiles = ref.watch(allProfilesProvider);
+    return profiles.when(
+      loading: () => const SizedBox(
+        height: 36,
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+      error: (e, _) => Text('Members: $e',
+          style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
+      data: (members) => Row(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Sanctuary.auroraCyan.withValues(alpha: 0.1),
-              border: Border.all(
-                color: Sanctuary.auroraCyan.withValues(alpha: 0.25),
+          Expanded(
+            child: DropdownButtonFormField<String>(
+              initialValue: picked?.id,
+              decoration: const InputDecoration(
+                isDense: true,
+                hintText: 'Pick member',
               ),
-              borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
-            ),
-            child: Text(
-              a.assignment.role.toUpperCase(),
-              style: Sanctuary.mono(
-                fontSize: 9,
-                color: Sanctuary.auroraCyan,
-                fontWeight: FontWeight.w600,
-              ),
+              dropdownColor: Sanctuary.ink2,
+              items: members
+                  .map((m) => DropdownMenuItem(
+                        value: m.id,
+                        child: Text(m.displayName,
+                            style: const TextStyle(
+                                color: Sanctuary.foreground, fontSize: 13),
+                            overflow: TextOverflow.ellipsis),
+                      ))
+                  .toList(),
+              onChanged: (id) {
+                final m = members.where((x) => x.id == id).firstOrNull;
+                onMemberChanged(m);
+              },
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              a.memberName,
-              style: const TextStyle(
-                color: Sanctuary.foreground,
-                fontSize: 14,
+            child: DropdownButtonFormField<String>(
+              initialValue: role,
+              decoration: const InputDecoration(
+                isDense: true,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              dropdownColor: Sanctuary.ink2,
+              items: _roles
+                  .map((r) => DropdownMenuItem(
+                        value: r,
+                        child: Text(r,
+                            style: Sanctuary.mono(
+                                fontSize: 12,
+                                color: Sanctuary.foreground,
+                                letterSpacing: 0)),
+                      ))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) onRoleChanged(v);
+              },
             ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: picked == null || busy ? null : onAdd,
+            style: FilledButton.styleFrom(
+              backgroundColor: Sanctuary.auroraCyan,
+              foregroundColor: Sanctuary.ink0,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              minimumSize: const Size(0, 40),
+            ),
+            child: busy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Sanctuary.ink0),
+                  )
+                : const Icon(Icons.add, size: 18),
           ),
         ],
       ),

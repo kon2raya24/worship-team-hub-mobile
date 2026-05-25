@@ -215,6 +215,10 @@ class AppDb extends _$AppDb {
     });
   }
 
+  Future<List<ProfileRow>> allProfiles() =>
+      (select(profiles)..orderBy([(t) => OrderingTerm.asc(t.displayName)]))
+          .get();
+
   // ── Schedule assignments ─────────────────────────────────────────────
   /// Watches upcoming assignments joined to member display name.
   Stream<List<UpcomingAssignment>> watchUpcomingAssignments() {
