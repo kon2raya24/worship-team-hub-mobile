@@ -59,5 +59,16 @@ dev_dependencies:
   custom_lint: ^0.7.6
   riverpod_lint: ^2.6.5
 
+  # Launcher icon generator
+  flutter_launcher_icons: ^0.14.1
+
 flutter:
   uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#04060E"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  remove_alpha_ios: true
