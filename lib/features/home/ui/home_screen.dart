@@ -149,6 +149,13 @@ class HomeScreen extends ConsumerWidget {
                   accent: Sanctuary.auroraViolet,
                   path: '/games',
                 ),
+                _HomeTile(
+                  title: 'Team',
+                  subtitle: 'Members + roles',
+                  icon: Icons.groups_outlined,
+                  accent: Sanctuary.auroraAmber,
+                  path: '/team',
+                ),
               ],
             ),
           ],

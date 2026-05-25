@@ -109,6 +109,20 @@ class Announcements extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+/// Mirrors `public.song_notes`.
+@DataClassName('SongNoteRow')
+class SongNotes extends Table {
+  TextColumn get id => text()();
+  TextColumn get songId => text()();
+  TextColumn get authorId => text().nullable()();
+  TextColumn get authorName => text().nullable()();
+  TextColumn get body => text()();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Songs,
@@ -119,13 +133,14 @@ class Announcements extends Table {
     Devotions,
     PrayerRequests,
     Announcements,
+    SongNotes,
   ],
 )
 class AppDb extends _$AppDb {
   AppDb() : super(_openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -139,6 +154,9 @@ class AppDb extends _$AppDb {
             await m.createTable(devotions);
             await m.createTable(prayerRequests);
             await m.createTable(announcements);
+          }
+          if (from < 4) {
+            await m.createTable(songNotes);
           }
         },
       );
@@ -218,6 +236,33 @@ class AppDb extends _$AppDb {
   Future<List<ProfileRow>> allProfiles() =>
       (select(profiles)..orderBy([(t) => OrderingTerm.asc(t.displayName)]))
           .get();
+
+  // ── Song notes ───────────────────────────────────────────────────────
+  Stream<List<SongNoteRow>> watchSongNotes(String songId) =>
+      (select(songNotes)
+            ..where((t) => t.songId.equals(songId))
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch();
+
+  Future<void> upsertSongNotes(List<SongNotesCompanion> rows) async {
+    if (rows.isEmpty) return;
+    await batch((b) {
+      for (final row in rows) {
+        b.insert(songNotes, row, mode: InsertMode.insertOrReplace);
+      }
+    });
+  }
+
+  Future<void> replaceSongNotes(
+    String songId,
+    List<SongNotesCompanion> rows,
+  ) async {
+    await transaction(() async {
+      await (delete(songNotes)..where((t) => t.songId.equals(songId))).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(songNotes, rows));
+    });
+  }
 
   // ── Schedule assignments ─────────────────────────────────────────────
   /// Watches upcoming assignments joined to member display name.

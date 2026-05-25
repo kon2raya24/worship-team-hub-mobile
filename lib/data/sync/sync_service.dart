@@ -539,6 +539,62 @@ class SyncService {
     }
   }
 
+  // ── Song notes ────────────────────────────────────────────────────
+  /// Pulls every note for one song. Called on-demand when the song detail
+  /// screen opens; not part of the global startup sync (would scale badly).
+  Future<void> syncSongNotes(String songId) async {
+    try {
+      final rows = await supabase
+          .from('song_notes')
+          .select(
+            'id, song_id, author_id, body, created_at, profiles(display_name)',
+          )
+          .eq('song_id', songId)
+          .order('created_at', ascending: false);
+      final companions = (rows as List).map((r) {
+        final m = r as Map<String, dynamic>;
+        final author = m['profiles'] as Map<String, dynamic>?;
+        return SongNotesCompanion.insert(
+          id: m['id'] as String,
+          songId: m['song_id'] as String,
+          authorId: Value(m['author_id'] as String?),
+          authorName: Value(author?['display_name'] as String?),
+          body: m['body'] as String,
+          createdAt: DateTime.parse(m['created_at'] as String),
+        );
+      }).toList();
+      await _db.replaceSongNotes(songId, companions);
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Sync song notes failed: $e\n$st');
+    }
+  }
+
+  Future<bool> postSongNote(String songId, String body) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return false;
+    try {
+      await supabase
+          .from('song_notes')
+          .insert({'song_id': songId, 'author_id': user.id, 'body': body});
+      await syncSongNotes(songId);
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Post song note failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<bool> deleteSongNote(String songId, String id) async {
+    try {
+      await supabase.from('song_notes').delete().eq('id', id);
+      await syncSongNotes(songId);
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete song note failed: $e\n$st');
+      return false;
+    }
+  }
+
   // ── Profile (self-update) ─────────────────────────────────────────
   Future<bool> updateMyProfile({
     required String displayName,
@@ -555,6 +611,18 @@ class SyncService {
       return true;
     } catch (e, st) {
       if (kDebugMode) debugPrint('Update profile failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Leader-only — change another member's role between 'leader' / 'member'.
+  Future<bool> setMemberRole(String userId, String role) async {
+    try {
+      await supabase.from('profiles').update({'role': role}).eq('id', userId);
+      await _syncProfilesAndSchedule();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Set member role failed: $e\n$st');
       return false;
     }
   }

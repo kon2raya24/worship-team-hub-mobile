@@ -11,6 +11,7 @@ import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
 import '../chordpro/chordpro.dart';
 import 'chord_viewer.dart';
+import 'song_notes_section.dart';
 
 class SongDetailScreen extends ConsumerWidget {
   const SongDetailScreen({super.key, required this.songId, this.targetKey});
@@ -255,6 +256,8 @@ class _SongBodyState extends State<_SongBody> {
                     )
                   : ChordViewer(song: parsed, fontSize: _fontSize),
             ),
+            const SizedBox(height: 14),
+            SongNotesSection(songId: widget.songId),
           ],
         ),
         if (_autoScrolling)

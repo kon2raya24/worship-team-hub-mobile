@@ -75,7 +75,15 @@ final announcementsStreamProvider =
   return ref.watch(appDbProvider).watchAnnouncements();
 });
 
-/// All synced team members — used by the schedule editor's member picker.
+/// All synced team members — used by the schedule editor's member picker
+/// and the /team page.
 final allProfilesProvider = FutureProvider<List<ProfileRow>>((ref) {
   return ref.watch(appDbProvider).allProfiles();
+});
+
+/// Notes for a single song. Watches Drift; the screen triggers a
+/// syncSongNotes() on open to make sure the cache is fresh.
+final songNotesStreamProvider =
+    StreamProvider.family<List<SongNoteRow>, String>((ref, songId) {
+  return ref.watch(appDbProvider).watchSongNotes(songId);
 });
