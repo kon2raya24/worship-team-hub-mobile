@@ -33,6 +33,7 @@ dependencies:
 
   # Connectivity & lifecycle
   connectivity_plus: ^6.0.5
+  wakelock_plus: ^1.2.8
 
   # Markdown (devotions, phase 2)
   flutter_markdown: ^0.7.4
