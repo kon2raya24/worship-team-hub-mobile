@@ -3,26 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
-
-final setlistsProvider =
-    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final today = DateTime.now().toUtc().toIso8601String().substring(0, 10);
-  final rows = await supabase
-      .from('setlists')
-      .select('id, service_date, theme')
-      .gte('service_date', today)
-      .order('service_date');
-  return List<Map<String, dynamic>>.from(rows);
-});
+import '../../../data/db/app_db.dart';
+import '../../../data/sync/providers.dart';
+import '../../../data/sync/sync_service.dart';
 
 class SetlistsListScreen extends ConsumerWidget {
   const SetlistsListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final setlists = ref.watch(setlistsProvider);
+    final setlists = ref.watch(upcomingSetlistsStreamProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -36,25 +27,35 @@ class SetlistsListScreen extends ConsumerWidget {
       body: setlists.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
-          child: Text('Failed to load setlists.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+          child: Text(
+            'Failed to load setlists.\n$e',
+            style: const TextStyle(color: Sanctuary.muted),
+          ),
         ),
         data: (list) {
-          if (list.isEmpty) {
-            return const Center(
-              child: Text('No upcoming setlists.',
-                  style: TextStyle(color: Sanctuary.muted)),
-            );
-          }
           return RefreshIndicator(
             color: Sanctuary.auroraCyan,
-            onRefresh: () async => ref.invalidate(setlistsProvider),
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => _SetlistCard(setlist: list[i]),
-            ),
+            onRefresh: () => ref.read(syncServiceProvider).syncAll(),
+            child: list.isEmpty
+                ? ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 120),
+                      Center(
+                        child: Text(
+                          'No upcoming setlists.\nPull to sync.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Sanctuary.muted),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) => _SetlistCard(setlist: list[i]),
+                  ),
           );
         },
       ),
@@ -65,32 +66,44 @@ class SetlistsListScreen extends ConsumerWidget {
 class _SetlistCard extends StatelessWidget {
   const _SetlistCard({required this.setlist});
 
-  final Map<String, dynamic> setlist;
+  final SetlistRow setlist;
 
   @override
   Widget build(BuildContext context) {
-    final date = DateTime.parse(setlist['service_date'] as String);
+    final date = setlist.serviceDate;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [
-            const Icon(Icons.calendar_today_outlined,
-                color: Sanctuary.auroraViolet, size: 14),
-            const SizedBox(width: 6),
-            Text(DateFormat('EEE').format(date).toUpperCase(),
+          Row(
+            children: [
+              const Icon(
+                Icons.calendar_today_outlined,
+                color: Sanctuary.auroraViolet,
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                DateFormat('EEE').format(date).toUpperCase(),
                 style: Sanctuary.mono(
-                    fontSize: 11, color: Sanctuary.auroraViolet)),
-          ]),
+                  fontSize: 11,
+                  color: Sanctuary.auroraViolet,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
-          Text(DateFormat('EEEE, MMM d').format(date),
-              style: Sanctuary.display(fontSize: 20)),
-          if ((setlist['theme'] as String?)?.isNotEmpty == true) ...[
+          Text(
+            DateFormat('EEEE, MMM d').format(date),
+            style: Sanctuary.display(fontSize: 20),
+          ),
+          if ((setlist.theme ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(setlist['theme'] as String,
-                style: const TextStyle(
-                    color: Sanctuary.muted, fontSize: 13)),
+            Text(
+              setlist.theme!,
+              style: const TextStyle(color: Sanctuary.muted, fontSize: 13),
+            ),
           ],
         ],
       ),
