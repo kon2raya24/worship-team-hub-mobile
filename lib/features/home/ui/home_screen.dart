@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
@@ -13,7 +14,32 @@ import '../../auth/biometric_service.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  Future<void> _signOut() async {
+  Future<void> _signOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Sanctuary.ink2,
+        title: const Text('Sign out?'),
+        content: const Text(
+          'You\'ll be returned to the login screen. Your offline cache and '
+          'fingerprint enrolment stay on this device.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Stay signed in'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Sanctuary.destructive,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
     // NOTE: deliberately *not* clearing the biometric enrolment here. The
     // whole point of fingerprint sign-in is to skip the password on the
     // next launch — wiping it on every sign-out would defeat that. The
@@ -45,7 +71,7 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',
-            onPressed: _signOut,
+            onPressed: () => _signOut(context),
           ),
         ],
       ),
@@ -149,6 +175,7 @@ class _BiometricToggle extends ConsumerStatefulWidget {
 
 class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
   bool? _canCheck;
+  bool _busy = false;
 
   @override
   void initState() {
@@ -166,6 +193,49 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
     final svc = ref.read(biometricServiceProvider);
     await svc?.disable();
     if (mounted) setState(() {});
+  }
+
+  /// Enrol from the home screen after the user declined the post-login
+  /// dialog. We need the password, so this opens a confirm dialog that
+  /// re-validates the password against Supabase before storing.
+  Future<void> _enrol() async {
+    final svc = ref.read(biometricServiceProvider);
+    final email = currentUser?.email;
+    if (svc == null || email == null || _busy) return;
+
+    final password = await showDialog<String?>(
+      context: context,
+      builder: (ctx) => const _PasswordConfirmDialog(),
+    );
+    if (password == null || password.isEmpty) return;
+
+    setState(() => _busy = true);
+    try {
+      // Re-authenticate to confirm the password is correct before storing it.
+      await supabase.auth.signInWithPassword(email: email, password: password);
+      if (!mounted) return;
+      final authed = await svc.authenticate(
+        reason: 'Verify to enable fingerprint sign-in',
+      );
+      if (!authed) return;
+      await svc.enrollWithCredentials(email: email, password: password);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fingerprint sign-in enabled.'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Password check failed: ${e.message}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -200,7 +270,7 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
                 Text(
                   enabled
                       ? 'On · skip the password on next sign-in'
-                      : 'Off · enrol from the login screen after sign-in',
+                      : 'Off · tap Set up to enrol now',
                   style: const TextStyle(
                     color: Sanctuary.muted,
                     fontSize: 12,
@@ -211,14 +281,95 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
           ),
           if (enabled)
             TextButton(
-              onPressed: _disable,
+              onPressed: _busy ? null : _disable,
               child: const Text(
                 'Disable',
                 style: TextStyle(color: Sanctuary.destructive),
               ),
+            )
+          else
+            TextButton(
+              onPressed: _busy ? null : _enrol,
+              child: _busy
+                  ? const SizedBox(
+                      height: 14,
+                      width: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Sanctuary.auroraCyan,
+                      ),
+                    )
+                  : const Text(
+                      'Set up',
+                      style: TextStyle(color: Sanctuary.auroraCyan),
+                    ),
             ),
         ],
       ),
+    );
+  }
+}
+
+class _PasswordConfirmDialog extends StatefulWidget {
+  const _PasswordConfirmDialog();
+
+  @override
+  State<_PasswordConfirmDialog> createState() => _PasswordConfirmDialogState();
+}
+
+class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
+  final _controller = TextEditingController();
+  bool _obscure = true;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Sanctuary.ink2,
+      title: const Text('Enter your password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Confirm your password to enable fingerprint sign-in. We\'ll '
+            'store it encrypted on this device only.',
+            style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            obscureText: _obscure,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: 'Password',
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscure ? Icons.visibility_off : Icons.visibility,
+                  size: 18,
+                ),
+                onPressed: () => setState(() => _obscure = !_obscure),
+              ),
+            ),
+            onSubmitted: (v) => Navigator.of(context).pop(v),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(null),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(_controller.text),
+          child: const Text('Confirm'),
+        ),
+      ],
     );
   }
 }

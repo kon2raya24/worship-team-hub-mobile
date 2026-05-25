@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
 import '../biometric_service.dart';
 import 'brand_mark.dart';
+
+const _kRememberMeKey = 'remember_me';
+const _kRememberedEmailKey = 'remembered_email';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -22,11 +26,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   String? _error;
   bool _canCheckBiometrics = false;
   bool _hasStoredCredentials = false;
+  bool _rememberMe = true;
 
   @override
   void initState() {
     super.initState();
     _probeBiometric();
+    _loadRememberedEmail();
+  }
+
+  Future<void> _loadRememberedEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool(_kRememberMeKey) ?? true;
+    final email = prefs.getString(_kRememberedEmailKey);
+    if (!mounted) return;
+    setState(() {
+      _rememberMe = remember;
+      if (remember && email != null) _email.text = email;
+    });
+  }
+
+  Future<void> _persistRememberMe(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kRememberMeKey, _rememberMe);
+    if (_rememberMe) {
+      await prefs.setString(_kRememberedEmailKey, email);
+    } else {
+      await prefs.remove(_kRememberedEmailKey);
+    }
   }
 
   @override
@@ -66,6 +93,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       await supabase.auth.signInWithPassword(email: email, password: password);
+      await _persistRememberMe(email);
       if (!mounted) return;
       await _offerBiometricEnrollment(email, password);
     } on AuthException catch (e) {
@@ -77,7 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _signInWithBiometric() async {
     final svc = ref.read(biometricServiceProvider);
-    if (svc == null || !svc.isEnabled) return;
+    if (svc == null || !_hasStoredCredentials) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -235,27 +263,73 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                         ],
                         const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: _busy
-                                ? null
-                                : () => context.push('/forgot-password'),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
+                        Row(
+                          children: [
+                            // Tap target for the checkbox + label together.
+                            InkWell(
+                              onTap: _busy
+                                  ? null
+                                  : () => setState(
+                                        () => _rememberMe = !_rememberMe,
+                                      ),
+                              borderRadius: BorderRadius.circular(6),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 4,
+                                  horizontal: 2,
+                                ),
+                                child: Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: Checkbox(
+                                        value: _rememberMe,
+                                        onChanged: _busy
+                                            ? null
+                                            : (v) => setState(
+                                                () => _rememberMe = v ?? false,
+                                              ),
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        visualDensity: VisualDensity.compact,
+                                        activeColor: Sanctuary.auroraCyan,
+                                        checkColor: Sanctuary.ink0,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Text(
+                                      'Remember me',
+                                      style: TextStyle(
+                                        color: Sanctuary.muted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              minimumSize: const Size(0, 32),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(
-                                color: Sanctuary.muted,
-                                fontSize: 12,
+                            const Spacer(),
+                            TextButton(
+                              onPressed: _busy
+                                  ? null
+                                  : () => context.push('/forgot-password'),
+                              style: TextButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                ),
+                                minimumSize: const Size(0, 32),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Forgot password?',
+                                style: TextStyle(
+                                  color: Sanctuary.muted,
+                                  fontSize: 12,
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                         const SizedBox(height: 4),
                         FilledButton(
