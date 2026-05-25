@@ -232,6 +232,61 @@ class SyncService {
       return false;
     }
   }
+
+  /// Leader-only — insert a new announcement and re-sync the feed.
+  /// Returns the new row id on success, null on failure.
+  Future<String?> postAnnouncement({
+    required String title,
+    required String body,
+    bool pinned = false,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final inserted = await supabase
+          .from('announcements')
+          .insert({
+            'author_id': user.id,
+            'title': title,
+            'body': body,
+            'pinned': pinned,
+          })
+          .select('id')
+          .single();
+      await _syncAnnouncements();
+      return inserted['id'] as String?;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Post announcement failed: $e\n$st');
+      return null;
+    }
+  }
+
+  /// Toggle pin on an announcement. Leader-only via RLS.
+  Future<bool> togglePinAnnouncement(String id, bool pinned) async {
+    try {
+      await supabase
+          .from('announcements')
+          .update({'pinned': pinned})
+          .eq('id', id);
+      await _syncAnnouncements();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Toggle pin failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Delete an announcement. Leader-only via RLS.
+  Future<bool> deleteAnnouncement(String id) async {
+    try {
+      await supabase.from('announcements').delete().eq('id', id);
+      await _syncAnnouncements();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete announcement failed: $e\n$st');
+      return false;
+    }
+  }
 }
 
 enum SyncResult { ok, skipped, failed }

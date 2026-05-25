@@ -18,6 +18,7 @@ import '../features/devotions/ui/devotions_list_screen.dart';
 import '../features/devotions/ui/devotion_detail_screen.dart';
 import '../features/prayer/ui/prayer_screen.dart';
 import '../features/announcements/ui/announcements_screen.dart';
+import '../features/announcements/ui/announcement_compose_screen.dart';
 import '../features/games/ui/games_index_screen.dart';
 import '../features/games/ui/transpose_game_screen.dart';
 import '../features/games/ui/keys_game_screen.dart';
@@ -86,6 +87,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/announcements',
         builder: (_, __) => const AnnouncementsScreen(),
+      ),
+      GoRoute(
+        path: '/announcements/new',
+        builder: (_, __) => const AnnouncementComposeScreen(),
       ),
       GoRoute(
         path: '/games',

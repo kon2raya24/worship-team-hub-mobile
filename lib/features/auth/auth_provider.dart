@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/supabase_client.dart';
+import '../../data/db/app_db.dart';
+import '../../data/sync/sync_service.dart';
 
 /// Stream of auth state changes — emits whenever the user signs in / out.
 final authStateProvider = StreamProvider<AuthState>((ref) {
@@ -41,4 +43,20 @@ final activeEmailProvider = Provider<String?>((ref) {
   // need it (BiometricService.readCredentials); we don't expose it here so
   // we don't have to bind the provider to async storage.
   return null;
+});
+
+/// Looks up the signed-in user's profile (display name + role) from the
+/// local Drift cache. Used to gate leader-only UI (compose buttons, edit
+/// actions). Returns null if no session or no profile row yet synced.
+final currentProfileProvider = FutureProvider<ProfileRow?>((ref) async {
+  ref.watch(authStateProvider); // re-fire on sign-out
+  final id = supabase.auth.currentUser?.id;
+  if (id == null) return null;
+  final db = ref.watch(appDbProvider);
+  return db.getProfile(id);
+});
+
+final isLeaderProvider = Provider<bool>((ref) {
+  final p = ref.watch(currentProfileProvider).value;
+  return p?.role == 'leader';
 });

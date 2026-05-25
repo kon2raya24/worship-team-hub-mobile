@@ -8,6 +8,7 @@ import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class AnnouncementsScreen extends ConsumerWidget {
   const AnnouncementsScreen({super.key});
@@ -15,6 +16,7 @@ class AnnouncementsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feed = ref.watch(announcementsStreamProvider);
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -25,6 +27,15 @@ class AnnouncementsScreen extends ConsumerWidget {
         ),
         title: const Text('Announcements'),
       ),
+      floatingActionButton: isLeader
+          ? FloatingActionButton.extended(
+              backgroundColor: Sanctuary.auroraViolet,
+              foregroundColor: Colors.white,
+              onPressed: () => context.push('/announcements/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('New'),
+            )
+          : null,
       body: feed.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
@@ -47,10 +58,10 @@ class AnnouncementsScreen extends ConsumerWidget {
                   ],
                 )
               : ListView.separated(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => _Card(a: list[i]),
+                  itemBuilder: (_, i) => _Card(a: list[i], isLeader: isLeader),
                 ),
         ),
       ),
@@ -58,12 +69,58 @@ class AnnouncementsScreen extends ConsumerWidget {
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.a});
+class _Card extends ConsumerWidget {
+  const _Card({required this.a, required this.isLeader});
   final AnnouncementRow a;
+  final bool isLeader;
+
+  Future<void> _togglePin(WidgetRef ref, BuildContext context) async {
+    final ok = await ref
+        .read(syncServiceProvider)
+        .togglePinAnnouncement(a.id, !a.pinned);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update pin.')),
+      );
+    }
+  }
+
+  Future<void> _confirmDelete(WidgetRef ref, BuildContext context) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Sanctuary.ink2,
+        title: const Text('Delete announcement?'),
+        content: Text('"${a.title}" will be removed for everyone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Sanctuary.destructive,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final deleted =
+        await ref.read(syncServiceProvider).deleteAnnouncement(a.id);
+    if (!context.mounted) return;
+    if (!deleted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Delete failed.')),
+      );
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -84,6 +141,43 @@ class _Card extends StatelessWidget {
               ],
               Text(DateFormat.MMMd().add_jm().format(a.createdAt),
                   style: const TextStyle(color: Sanctuary.muted, fontSize: 11)),
+              const Spacer(),
+              if (isLeader)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_horiz,
+                      size: 18, color: Sanctuary.muted),
+                  color: Sanctuary.ink2,
+                  onSelected: (v) {
+                    if (v == 'pin') _togglePin(ref, context);
+                    if (v == 'delete') _confirmDelete(ref, context);
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'pin',
+                      child: Row(
+                        children: [
+                          Icon(a.pinned
+                              ? Icons.push_pin_outlined
+                              : Icons.push_pin),
+                          const SizedBox(width: 8),
+                          Text(a.pinned ? 'Unpin' : 'Pin to top'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete_outline,
+                              color: Sanctuary.destructive),
+                          SizedBox(width: 8),
+                          Text('Delete',
+                              style: TextStyle(color: Sanctuary.destructive)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
           const SizedBox(height: 6),
