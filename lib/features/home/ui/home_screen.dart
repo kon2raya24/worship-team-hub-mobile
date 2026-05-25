@@ -16,8 +16,7 @@ class HomeScreen extends ConsumerWidget {
   Future<void> _signOut(WidgetRef ref) async {
     // Clear the biometric preference too so the next account doesn't inherit it.
     final bio = ref.read(biometricServiceProvider);
-    await bio?.setEnabled(false);
-    ref.read(unlockSessionProvider.notifier).relock();
+    await bio?.disable();
     await supabase.auth.signOut();
   }
 
@@ -136,8 +135,10 @@ class _SyncBadge extends StatelessWidget {
   }
 }
 
-/// One-tap enrollment card for biometric unlock. Hides itself if the device
-/// has no biometric support, OR if the user has already enabled it.
+/// Status card for biometric sign-in. Enrollment happens at the login screen
+/// (we need the password to store), so this card only surfaces the current
+/// state and offers a Disable action. Hidden if the device has no biometric
+/// hardware.
 class _BiometricToggle extends ConsumerStatefulWidget {
   const _BiometricToggle();
 
@@ -147,7 +148,6 @@ class _BiometricToggle extends ConsumerStatefulWidget {
 
 class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
   bool? _canCheck;
-  bool _busy = false;
 
   @override
   void initState() {
@@ -161,24 +161,9 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
     if (mounted) setState(() => _canCheck = can);
   }
 
-  Future<void> _enable() async {
-    final svc = ref.read(biometricServiceProvider);
-    if (svc == null || _busy) return;
-    setState(() => _busy = true);
-    final ok = await svc.authenticate(
-      reason: 'Enable biometric unlock for Worship Hub',
-    );
-    if (!mounted) return;
-    if (ok) {
-      await svc.setEnabled(true);
-      ref.read(unlockSessionProvider.notifier).unlock();
-    }
-    setState(() => _busy = false);
-  }
-
   Future<void> _disable() async {
     final svc = ref.read(biometricServiceProvider);
-    await svc?.setEnabled(false);
+    await svc?.disable();
     if (mounted) setState(() {});
   }
 
@@ -208,13 +193,13 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Biometric unlock',
+                  'Fingerprint sign-in',
                   style: Sanctuary.display(fontSize: 14),
                 ),
                 Text(
                   enabled
-                      ? 'On · ask each time the app opens'
-                      : 'Off · use fingerprint or face',
+                      ? 'On · use fingerprint on the login screen'
+                      : 'Off · sign out and back in to enrol',
                   style: const TextStyle(
                     color: Sanctuary.muted,
                     fontSize: 12,
@@ -223,19 +208,14 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
               ],
             ),
           ),
-          Switch(
-            value: enabled,
-            onChanged: _busy
-                ? null
-                : (v) {
-                    if (v) {
-                      _enable();
-                    } else {
-                      _disable();
-                    }
-                  },
-            activeThumbColor: Sanctuary.auroraCyan,
-          ),
+          if (enabled)
+            TextButton(
+              onPressed: _disable,
+              child: const Text(
+                'Disable',
+                style: TextStyle(color: Sanctuary.destructive),
+              ),
+            ),
         ],
       ),
     );

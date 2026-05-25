@@ -5,9 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/auth/auth_provider.dart';
-import '../features/auth/biometric_service.dart';
 import '../features/auth/ui/login_screen.dart';
-import '../features/auth/ui/lock_screen.dart';
+import '../features/auth/ui/signup_screen.dart';
+import '../features/auth/ui/forgot_password_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/songs/ui/songs_list_screen.dart';
 import '../features/songs/ui/song_detail_screen.dart';
@@ -25,26 +25,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final signedIn = ref.read(isSignedInProvider);
       final loc = state.matchedLocation;
-      final goingToLogin = loc == '/login';
-      final goingToLock = loc == '/lock';
+      const unauthOk = {'/login', '/signup', '/forgot-password'};
 
       if (!signedIn) {
-        return goingToLogin ? null : '/login';
+        return unauthOk.contains(loc) ? null : '/login';
       }
-      if (goingToLogin) return '/';
-
-      // Signed in — check the biometric gate for this launch.
-      final bio = ref.read(biometricServiceProvider);
-      final unlocked = ref.read(unlockSessionProvider);
-      if (bio != null && bio.isEnabled && !unlocked && !goingToLock) {
-        return '/lock';
-      }
-      if (unlocked && goingToLock) return '/';
+      if (loc == '/login') return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(path: '/lock', builder: (_, __) => const LockScreen()),
+      GoRoute(path: '/signup', builder: (_, __) => const SignupScreen()),
+      GoRoute(
+        path: '/forgot-password',
+        builder: (_, __) => const ForgotPasswordScreen(),
+      ),
       GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
       GoRoute(path: '/songs', builder: (_, __) => const SongsListScreen()),
       GoRoute(

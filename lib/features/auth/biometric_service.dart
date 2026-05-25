@@ -1,25 +1,30 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:local_auth_android/local_auth_android.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/supabase_client.dart';
-
 const _kBiometricEnabledKey = 'biometric_enabled';
+const _kEmailKey = 'biometric_email';
+const _kPasswordKey = 'biometric_password';
 
-/// Wraps local_auth + a "biometric enabled" preference. Auth state itself
-/// stays in supabase_flutter — this service only decides whether to gate
-/// the home screen with a fingerprint prompt at app launch.
+const _secureOpts = AndroidOptions(encryptedSharedPreferences: true);
+
+/// Wraps local_auth + secure-storage-backed credentials so the login screen
+/// can offer "Sign in with fingerprint" on subsequent launches.
 class BiometricService {
   BiometricService(this._prefs);
 
   final SharedPreferences _prefs;
   final LocalAuthentication _auth = LocalAuthentication();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    aOptions: _secureOpts,
+  );
 
-  /// Hardware + OS support check. Doesn't mean the user has enrolled a
-  /// fingerprint/face — just that this device can in principle.
+  /// Hardware + OS support check (doesn't require the user to have enrolled
+  /// a fingerprint).
   Future<bool> canCheckBiometrics() async {
     try {
       final supported = await _auth.isDeviceSupported();
@@ -31,15 +36,11 @@ class BiometricService {
     }
   }
 
-  /// Whether the user has chosen to gate the app with biometrics. This is
-  /// our app's preference — distinct from the OS-level enrollment.
+  /// True once the user has enrolled biometric sign-in for this app +
+  /// credentials are stored.
   bool get isEnabled => _prefs.getBool(_kBiometricEnabledKey) ?? false;
 
-  Future<void> setEnabled(bool value) async {
-    await _prefs.setBool(_kBiometricEnabledKey, value);
-  }
-
-  /// Show the system biometric prompt. Returns true if the user authenticated.
+  /// Show the system biometric prompt.
   Future<bool> authenticate({String reason = 'Unlock Worship Hub'}) async {
     try {
       return await _auth.authenticate(
@@ -53,7 +54,7 @@ class BiometricService {
         ],
         options: const AuthenticationOptions(
           stickyAuth: true,
-          biometricOnly: false, // allow device PIN as fallback
+          biometricOnly: false,
         ),
       );
     } on PlatformException catch (e, st) {
@@ -62,22 +63,40 @@ class BiometricService {
     }
   }
 
-  Future<void> signOutAndDisable() async {
-    await setEnabled(false);
-    await supabase.auth.signOut();
+  /// Persist credentials behind secure storage + mark biometric enabled.
+  /// Call this after a successful password sign-in if the user opted in.
+  Future<void> enrollWithCredentials({
+    required String email,
+    required String password,
+  }) async {
+    await _storage.write(key: _kEmailKey, value: email, aOptions: _secureOpts);
+    await _storage.write(
+      key: _kPasswordKey,
+      value: password,
+      aOptions: _secureOpts,
+    );
+    await _prefs.setBool(_kBiometricEnabledKey, true);
+  }
+
+  /// Read stored credentials (call after a successful biometric prompt).
+  /// Returns null if anything is missing.
+  Future<({String email, String password})?> readCredentials() async {
+    final email = await _storage.read(key: _kEmailKey, aOptions: _secureOpts);
+    final password = await _storage.read(
+      key: _kPasswordKey,
+      aOptions: _secureOpts,
+    );
+    if (email == null || password == null) return null;
+    return (email: email, password: password);
+  }
+
+  /// Disable biometric sign-in and forget the stored credentials.
+  Future<void> disable() async {
+    await _storage.delete(key: _kEmailKey, aOptions: _secureOpts);
+    await _storage.delete(key: _kPasswordKey, aOptions: _secureOpts);
+    await _prefs.setBool(_kBiometricEnabledKey, false);
   }
 }
-
-/// In-memory flag: true while the current launch has already passed the
-/// biometric gate. Reset on app restart so the user has to unlock again.
-class UnlockSession extends StateNotifier<bool> {
-  UnlockSession() : super(false);
-  void unlock() => state = true;
-  void relock() => state = false;
-}
-
-final unlockSessionProvider =
-    StateNotifierProvider<UnlockSession, bool>((ref) => UnlockSession());
 
 final sharedPrefsProvider = FutureProvider<SharedPreferences>(
   (ref) => SharedPreferences.getInstance(),

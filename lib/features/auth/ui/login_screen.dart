@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../biometric_service.dart';
+import 'brand_mark.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -17,6 +20,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _password = TextEditingController();
   bool _busy = false;
   String? _error;
+  bool _canCheckBiometrics = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _probeBiometric();
+  }
 
   @override
   void dispose() {
@@ -25,16 +35,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _signIn() async {
+  Future<void> _probeBiometric() async {
+    final svc = ref.read(biometricServiceProvider);
+    final can = await svc?.canCheckBiometrics() ?? false;
+    if (mounted) setState(() => _canCheckBiometrics = can);
+  }
+
+  Future<void> _signInWithPassword() async {
+    final email = _email.text.trim();
+    final password = _password.text;
+    if (email.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Email and password are required.');
+      return;
+    }
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
-      await supabase.auth.signInWithPassword(
-        email: _email.text.trim(),
-        password: _password.text,
-      );
+      await supabase.auth.signInWithPassword(email: email, password: password);
+      if (!mounted) return;
+      await _offerBiometricEnrollment(email, password);
     } on AuthException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } finally {
@@ -42,8 +63,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  Future<void> _signInWithBiometric() async {
+    final svc = ref.read(biometricServiceProvider);
+    if (svc == null || !svc.isEnabled) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final ok = await svc.authenticate(reason: 'Sign in to Worship Hub');
+    if (!ok) {
+      if (mounted) setState(() => _busy = false);
+      return;
+    }
+    final creds = await svc.readCredentials();
+    if (creds == null) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = 'No saved credentials. Sign in with password to re-enrol.';
+        });
+        await svc.disable();
+      }
+      return;
+    }
+    try {
+      await supabase.auth.signInWithPassword(
+        email: creds.email,
+        password: creds.password,
+      );
+    } on AuthException catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = '${e.message} — type your password to re-enrol.';
+          _email.text = creds.email;
+        });
+        await svc.disable();
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _offerBiometricEnrollment(String email, String password) async {
+    final svc = ref.read(biometricServiceProvider);
+    if (svc == null || svc.isEnabled || !_canCheckBiometrics) return;
+    final shouldEnable = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Sanctuary.ink2,
+        title: const Text('Enable fingerprint sign-in?'),
+        content: const Text(
+          'Sign in next time with your fingerprint. Your credentials are stored '
+          'encrypted on this device only.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+    if (shouldEnable != true) return;
+    final authed = await svc.authenticate(reason: 'Verify to enable biometrics');
+    if (authed) {
+      await svc.enrollWithCredentials(email: email, password: password);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final svc = ref.watch(biometricServiceProvider);
+    final showBiometric = svc != null && svc.isEnabled && _canCheckBiometrics;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -55,13 +151,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const _BrandMark(size: 64),
+                  const BrandMark(size: 64),
                   const SizedBox(height: 16),
                   Text('Worship Hub', style: Sanctuary.display(fontSize: 28)),
                   const SizedBox(height: 4),
-                  Text('Worship · Team · Hub',
-                      style: Sanctuary.mono(fontSize: 11)),
+                  Text(
+                    'Worship · Team · Hub',
+                    style: Sanctuary.mono(fontSize: 11),
+                  ),
                   const SizedBox(height: 32),
+
+                  if (showBiometric) ...[
+                    _BiometricButton(busy: _busy, onTap: _signInWithBiometric),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: const [
+                        Expanded(child: Divider(color: Sanctuary.hairline)),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: TextStyle(
+                              color: Sanctuary.muted,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Sanctuary.hairline)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                  ],
+
                   GlassCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -77,37 +198,84 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _password,
                           obscureText: true,
                           autofillHints: const [AutofillHints.password],
-                          decoration:
-                              const InputDecoration(hintText: 'Password'),
-                          onSubmitted: (_) => _signIn(),
+                          decoration: const InputDecoration(
+                            hintText: 'Password',
+                          ),
+                          onSubmitted: (_) => _signInWithPassword(),
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!,
-                              style: const TextStyle(
-                                  color: Sanctuary.destructive, fontSize: 13)),
+                          Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: Sanctuary.destructive,
+                              fontSize: 13,
+                            ),
+                          ),
                         ],
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _busy
+                                ? null
+                                : () => context.push('/forgot-password'),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              minimumSize: const Size(0, 32),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forgot password?',
+                              style: TextStyle(
+                                color: Sanctuary.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         FilledButton(
-                          onPressed: _busy ? null : _signIn,
+                          onPressed: _busy ? null : _signInWithPassword,
                           child: _busy
                               ? const SizedBox(
                                   height: 18,
                                   width: 18,
                                   child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
                               : const Text('Sign in'),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    'Create an account on the web app, then sign in here.',
-                    style: TextStyle(
-                        color: Sanctuary.muted.withValues(alpha: 0.8),
-                        fontSize: 12),
-                    textAlign: TextAlign.center,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'New here?',
+                        style: TextStyle(
+                          color: Sanctuary.muted.withValues(alpha: 0.8),
+                          fontSize: 13,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _busy ? null : () => context.push('/signup'),
+                        child: const Text(
+                          'Create an account',
+                          style: TextStyle(
+                            color: Sanctuary.auroraCyan,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -119,38 +287,51 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 }
 
-class _BrandMark extends StatelessWidget {
-  const _BrandMark({this.size = 32});
-
-  final double size;
+class _BiometricButton extends StatelessWidget {
+  const _BiometricButton({required this.busy, required this.onTap});
+  final bool busy;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.18),
-        gradient: const SweepGradient(
-          startAngle: 2.4,
-          colors: [
-            Sanctuary.auroraCyan,
-            Sanctuary.auroraViolet,
-            Sanctuary.auroraMagenta,
-            Sanctuary.auroraCyan,
-          ],
-        ),
-      ),
-      child: Center(
-        child: Container(
-          width: size * 0.65,
-          height: size * 0.65,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.12),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Sanctuary.auroraCyan, Sanctuary.auroraViolet],
+    return SizedBox(
+      width: double.infinity,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+          onTap: busy ? null : onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Sanctuary.auroraCyan.withValues(alpha: 0.18),
+                  Sanctuary.auroraViolet.withValues(alpha: 0.22),
+                ],
+              ),
+              border: Border.all(
+                color: Sanctuary.auroraCyan.withValues(alpha: 0.45),
+              ),
+              borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.fingerprint,
+                  color: Sanctuary.auroraCyan,
+                  size: 22,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'Sign in with fingerprint',
+                  style: Sanctuary.display(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
