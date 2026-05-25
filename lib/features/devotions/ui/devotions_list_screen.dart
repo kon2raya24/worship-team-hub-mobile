@@ -7,6 +7,7 @@ import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class DevotionsListScreen extends ConsumerWidget {
   const DevotionsListScreen({super.key});
@@ -14,6 +15,7 @@ class DevotionsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final devotions = ref.watch(devotionsStreamProvider);
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -24,6 +26,15 @@ class DevotionsListScreen extends ConsumerWidget {
         ),
         title: const Text('Devotions'),
       ),
+      floatingActionButton: isLeader
+          ? FloatingActionButton.extended(
+              backgroundColor: Sanctuary.auroraAmber,
+              foregroundColor: Sanctuary.ink0,
+              onPressed: () => context.push('/devotions/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('New'),
+            )
+          : null,
       body: devotions.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

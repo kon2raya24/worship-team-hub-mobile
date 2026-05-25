@@ -287,6 +287,230 @@ class SyncService {
       return false;
     }
   }
+
+  // ── Devotions (leader writes) ──────────────────────────────────────
+  Future<String?> postDevotion({
+    required String title,
+    required String body,
+    String? scriptureRef,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final row = await supabase
+          .from('devotions')
+          .insert({
+            'author_id': user.id,
+            'title': title,
+            'body': body,
+            if (scriptureRef != null && scriptureRef.isNotEmpty)
+              'scripture_ref': scriptureRef,
+          })
+          .select('id')
+          .single();
+      await _syncDevotions();
+      return row['id'] as String?;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Post devotion failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<bool> deleteDevotion(String id) async {
+    try {
+      await supabase.from('devotions').delete().eq('id', id);
+      await _syncDevotions();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete devotion failed: $e\n$st');
+      return false;
+    }
+  }
+
+  // ── Songs (leader writes) ──────────────────────────────────────────
+  Future<String?> createSong({
+    required String title,
+    String? artist,
+    String? originalKey,
+    int? bpm,
+    List<String> tags = const [],
+    String chordproBody = '',
+    String? referenceUrl,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final row = await supabase
+          .from('songs')
+          .insert({
+            'created_by': user.id,
+            'title': title,
+            if (artist != null && artist.isNotEmpty) 'artist': artist,
+            if (originalKey != null && originalKey.isNotEmpty)
+              'original_key': originalKey,
+            if (bpm != null) 'bpm': bpm,
+            'tags': tags,
+            'chordpro_body': chordproBody,
+            if (referenceUrl != null && referenceUrl.isNotEmpty)
+              'reference_url': referenceUrl,
+          })
+          .select('id')
+          .single();
+      await _syncSongs();
+      return row['id'] as String?;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Create song failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<bool> updateSong({
+    required String id,
+    required String title,
+    String? artist,
+    String? originalKey,
+    int? bpm,
+    List<String> tags = const [],
+    String chordproBody = '',
+    String? referenceUrl,
+  }) async {
+    try {
+      await supabase.from('songs').update({
+        'title': title,
+        'artist': artist,
+        'original_key': originalKey,
+        'bpm': bpm,
+        'tags': tags,
+        'chordpro_body': chordproBody,
+        'reference_url': referenceUrl,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', id);
+      await _syncSongs();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Update song failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<bool> deleteSong(String id) async {
+    try {
+      await supabase.from('songs').delete().eq('id', id);
+      await _syncSongs();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete song failed: $e\n$st');
+      return false;
+    }
+  }
+
+  // ── Setlists (leader writes) ───────────────────────────────────────
+  Future<String?> createSetlist({
+    required DateTime serviceDate,
+    String? theme,
+    String? notes,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final row = await supabase
+          .from('setlists')
+          .insert({
+            'service_date':
+                serviceDate.toIso8601String().substring(0, 10),
+            if (theme != null && theme.isNotEmpty) 'theme': theme,
+            if (notes != null && notes.isNotEmpty) 'notes': notes,
+            'leader_id': user.id,
+          })
+          .select('id')
+          .single();
+      await _syncSetlistsAndJoins();
+      return row['id'] as String?;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Create setlist failed: $e\n$st');
+      return null;
+    }
+  }
+
+  Future<bool> deleteSetlist(String id) async {
+    try {
+      await supabase.from('setlists').delete().eq('id', id);
+      await _syncSetlistsAndJoins();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Delete setlist failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<bool> addSongToSetlist(
+    String setlistId,
+    String songId,
+    int position, {
+    String? playedInKey,
+  }) async {
+    try {
+      await supabase.from('setlist_songs').insert({
+        'setlist_id': setlistId,
+        'song_id': songId,
+        'position': position,
+        if (playedInKey != null && playedInKey.isNotEmpty)
+          'played_in_key': playedInKey,
+      });
+      await _syncSetlistsAndJoins();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Add song to setlist failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<bool> removeSongFromSetlist(String setlistId, String songId) async {
+    try {
+      await supabase
+          .from('setlist_songs')
+          .delete()
+          .eq('setlist_id', setlistId)
+          .eq('song_id', songId);
+      await _syncSetlistsAndJoins();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Remove song from setlist failed: $e\n$st');
+      return false;
+    }
+  }
+
+  // ── Schedule (leader writes) ───────────────────────────────────────
+  Future<bool> assignToSchedule({
+    required DateTime serviceDate,
+    required String userId,
+    required String role,
+  }) async {
+    try {
+      await supabase.from('schedule_assignments').insert({
+        'service_date':
+            serviceDate.toIso8601String().substring(0, 10),
+        'user_id': userId,
+        'role': role,
+      });
+      await _syncProfilesAndSchedule();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Assign schedule failed: $e\n$st');
+      return false;
+    }
+  }
+
+  Future<bool> unassignSchedule(String id) async {
+    try {
+      await supabase.from('schedule_assignments').delete().eq('id', id);
+      await _syncProfilesAndSchedule();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Unassign failed: $e\n$st');
+      return false;
+    }
+  }
 }
 
 enum SyncResult { ok, skipped, failed }

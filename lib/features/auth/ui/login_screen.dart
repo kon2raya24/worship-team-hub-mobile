@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
@@ -135,18 +136,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: creds.password,
       );
     } catch (e) {
-      // If the failure is a network issue, drop into offline mode using
-      // the biometric-verified credentials. The cached Drift data is fully
-      // readable; writes that hit Supabase will fail naturally.
-      final s = e.toString().toLowerCase();
-      final offline = s.contains('socketexception') ||
-          s.contains('failed host lookup') ||
-          s.contains('network is unreachable') ||
-          s.contains('connection refused') ||
-          s.contains('timeoutexception');
-      if (offline) {
+      // The biometric already proved who the user is. If Supabase rejected
+      // the saved password (credentials changed online), we have to ask for
+      // a fresh password. Anything else is treated as a network failure and
+      // we drop into offline mode so the user can still read cached data.
+      final isAuth = e is AuthException &&
+          (e.message.toLowerCase().contains('invalid login') ||
+              e.message.toLowerCase().contains('credentials'));
+      if (!isAuth && mounted) {
         ref.read(offlineModeProvider.notifier).state = true;
-        // Router redirect will land on /
+        // GoRouter's refreshListenable only fires on supabase auth state,
+        // not Riverpod changes — push the home route ourselves.
+        context.go('/');
         return;
       }
       if (mounted) {

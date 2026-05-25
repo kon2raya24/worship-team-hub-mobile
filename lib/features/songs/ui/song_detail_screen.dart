@@ -7,6 +7,8 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme.dart';
 import '../../../data/sync/providers.dart';
+import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 import '../chordpro/chordpro.dart';
 import 'chord_viewer.dart';
 
@@ -23,6 +25,7 @@ class SongDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final song = ref.watch(songByIdProvider(songId));
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -32,6 +35,74 @@ class SongDetailScreen extends ConsumerWidget {
           onPressed: () => context.canPop() ? context.pop() : context.go('/songs'),
         ),
         title: const Text('Chord chart'),
+        actions: [
+          if (isLeader)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, size: 20),
+              color: Sanctuary.ink2,
+              onSelected: (v) async {
+                if (v == 'edit') {
+                  context.push('/songs/$songId/edit');
+                } else if (v == 'delete') {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      backgroundColor: Sanctuary.ink2,
+                      title: const Text('Delete song?'),
+                      content: const Text(
+                        'This removes the song for everyone — including '
+                        'any setlist references.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Sanctuary.destructive,
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Delete'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok != true) return;
+                  final deleted = await ref
+                      .read(syncServiceProvider)
+                      .deleteSong(songId);
+                  if (!context.mounted) return;
+                  if (deleted) {
+                    context.go('/songs');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Delete failed.')),
+                    );
+                  }
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(
+                  value: 'edit',
+                  child: Row(children: [
+                    Icon(Icons.edit_outlined),
+                    SizedBox(width: 8),
+                    Text('Edit'),
+                  ]),
+                ),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Row(children: [
+                    Icon(Icons.delete_outline, color: Sanctuary.destructive),
+                    SizedBox(width: 8),
+                    Text('Delete',
+                        style: TextStyle(color: Sanctuary.destructive)),
+                  ]),
+                ),
+              ],
+            ),
+        ],
       ),
       body: song.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -55,6 +126,7 @@ class SongDetailScreen extends ConsumerWidget {
             );
           }
           return _SongBody(
+            songId: s.id,
             title: s.title,
             artist: s.artist,
             originalKey: s.originalKey,
@@ -70,6 +142,7 @@ class SongDetailScreen extends ConsumerWidget {
 
 class _SongBody extends StatefulWidget {
   const _SongBody({
+    required this.songId,
     required this.title,
     required this.artist,
     required this.originalKey,
@@ -77,6 +150,7 @@ class _SongBody extends StatefulWidget {
     this.initialTranspose = 0,
   });
 
+  final String songId;
   final String title;
   final String? artist;
   final String? originalKey;
@@ -156,6 +230,7 @@ class _SongBodyState extends State<_SongBody> {
             ],
             const SizedBox(height: 16),
             _Controls(
+              originalKey: widget.originalKey,
               currentKey: currentKey,
               transpose: _transpose,
               autoScrolling: _autoScrolling,
@@ -200,6 +275,7 @@ class _SongBodyState extends State<_SongBody> {
 
 class _Controls extends StatelessWidget {
   const _Controls({
+    required this.originalKey,
     required this.currentKey,
     required this.transpose,
     required this.autoScrolling,
@@ -211,6 +287,7 @@ class _Controls extends StatelessWidget {
     required this.onToggleAutoScroll,
   });
 
+  final String? originalKey;
   final String? currentKey;
   final int transpose;
   final bool autoScrolling;
@@ -228,29 +305,20 @@ class _Controls extends StatelessWidget {
       child: Row(
         children: [
           if ((currentKey ?? '').isNotEmpty) ...[
-            _Pill(
-              label: 'KEY',
-              value: currentKey!,
-              accent: Sanctuary.auroraViolet,
+            GestureDetector(
+              onTap: transpose != 0 ? onTransposeReset : null,
+              child: _Pill(
+                label: 'KEY',
+                value: (transpose != 0 &&
+                        (originalKey ?? '').isNotEmpty &&
+                        originalKey != currentKey)
+                    ? '${originalKey!} → ${currentKey!}'
+                    : currentKey!,
+                accent: Sanctuary.auroraViolet,
+              ),
             ),
             const SizedBox(width: 10),
           ],
-          if (transpose != 0)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: GestureDetector(
-                onTap: onTransposeReset,
-                child: Text(
-                  transpose > 0 ? '+$transpose' : '$transpose',
-                  style: Sanctuary.mono(
-                    fontSize: 12,
-                    color: Sanctuary.auroraAmber,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0,
-                  ),
-                ),
-              ),
-            ),
           const Spacer(),
           _IconBtn(
             icon: autoScrolling ? Icons.pause : Icons.play_arrow,

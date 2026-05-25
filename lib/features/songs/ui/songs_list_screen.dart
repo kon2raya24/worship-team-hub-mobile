@@ -6,6 +6,7 @@ import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
+import '../../auth/auth_provider.dart';
 
 class SongsListScreen extends ConsumerStatefulWidget {
   const SongsListScreen({super.key});
@@ -35,6 +36,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
   @override
   Widget build(BuildContext context) {
     final songs = ref.watch(songsStreamProvider);
+    final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -45,6 +47,15 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
         ),
         title: const Text('Songs'),
       ),
+      floatingActionButton: isLeader
+          ? FloatingActionButton.extended(
+              backgroundColor: Sanctuary.auroraViolet,
+              foregroundColor: Colors.white,
+              onPressed: () => context.push('/songs/new'),
+              icon: const Icon(Icons.add),
+              label: const Text('New'),
+            )
+          : null,
       body: songs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(

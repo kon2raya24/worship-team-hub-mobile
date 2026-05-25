@@ -16,6 +16,8 @@ import '../features/setlists/ui/setlist_detail_screen.dart';
 import '../features/schedule/ui/schedule_screen.dart';
 import '../features/devotions/ui/devotions_list_screen.dart';
 import '../features/devotions/ui/devotion_detail_screen.dart';
+import '../features/devotions/ui/devotion_compose_screen.dart';
+import '../features/songs/ui/song_compose_screen.dart';
 import '../features/prayer/ui/prayer_screen.dart';
 import '../features/announcements/ui/announcements_screen.dart';
 import '../features/announcements/ui/announcement_compose_screen.dart';
@@ -52,11 +54,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, __) => const HomeScreen()),
       GoRoute(path: '/songs', builder: (_, __) => const SongsListScreen()),
       GoRoute(
+        path: '/songs/new',
+        builder: (_, __) => const SongComposeScreen(),
+      ),
+      GoRoute(
         path: '/songs/:id',
         builder: (_, state) => SongDetailScreen(
           songId: state.pathParameters['id']!,
           targetKey: state.uri.queryParameters['key'],
         ),
+      ),
+      GoRoute(
+        path: '/songs/:id/edit',
+        builder: (_, state) =>
+            SongComposeScreen(songId: state.pathParameters['id']!),
       ),
       GoRoute(
         path: '/setlists',
@@ -74,6 +85,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/devotions',
         builder: (_, __) => const DevotionsListScreen(),
+      ),
+      GoRoute(
+        path: '/devotions/new',
+        builder: (_, __) => const DevotionComposeScreen(),
       ),
       GoRoute(
         path: '/devotions/:id',
