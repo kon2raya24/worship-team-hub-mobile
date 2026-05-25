@@ -13,10 +13,11 @@ import '../../auth/biometric_service.dart';
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  Future<void> _signOut(WidgetRef ref) async {
-    // Clear the biometric preference too so the next account doesn't inherit it.
-    final bio = ref.read(biometricServiceProvider);
-    await bio?.disable();
+  Future<void> _signOut() async {
+    // NOTE: deliberately *not* clearing the biometric enrolment here. The
+    // whole point of fingerprint sign-in is to skip the password on the
+    // next launch — wiping it on every sign-out would defeat that. The
+    // user can disable biometric explicitly from the home screen card.
     await supabase.auth.signOut();
   }
 
@@ -44,7 +45,7 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.logout, size: 20),
             tooltip: 'Sign out',
-            onPressed: () => _signOut(ref),
+            onPressed: _signOut,
           ),
         ],
       ),
@@ -198,8 +199,8 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
                 ),
                 Text(
                   enabled
-                      ? 'On · use fingerprint on the login screen'
-                      : 'Off · sign out and back in to enrol',
+                      ? 'On · skip the password on next sign-in'
+                      : 'Off · enrol from the login screen after sign-in',
                   style: const TextStyle(
                     color: Sanctuary.muted,
                     fontSize: 12,

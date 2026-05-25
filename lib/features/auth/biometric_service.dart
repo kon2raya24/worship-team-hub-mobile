@@ -40,6 +40,19 @@ class BiometricService {
   /// credentials are stored.
   bool get isEnabled => _prefs.getBool(_kBiometricEnabledKey) ?? false;
 
+  /// Whether credentials are actually present in secure storage. Used to
+  /// detect a stale [isEnabled] flag left over from an older app version
+  /// (or after the user uninstalled and reinstalled — secure storage
+  /// gets wiped, but shared_preferences may survive on some launchers).
+  Future<bool> hasStoredCredentials() async {
+    final email = await _storage.read(key: _kEmailKey, aOptions: _secureOpts);
+    final password = await _storage.read(
+      key: _kPasswordKey,
+      aOptions: _secureOpts,
+    );
+    return email != null && password != null;
+  }
+
   /// Show the system biometric prompt.
   Future<bool> authenticate({String reason = 'Unlock Worship Hub'}) async {
     try {

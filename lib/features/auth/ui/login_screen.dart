@@ -21,6 +21,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _busy = false;
   String? _error;
   bool _canCheckBiometrics = false;
+  bool _hasStoredCredentials = false;
 
   @override
   void initState() {
@@ -38,7 +39,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _probeBiometric() async {
     final svc = ref.read(biometricServiceProvider);
     final can = await svc?.canCheckBiometrics() ?? false;
-    if (mounted) setState(() => _canCheckBiometrics = can);
+    final hasCreds = await svc?.hasStoredCredentials() ?? false;
+    // Clean up a stale "enabled" flag from older versions where we set
+    // the flag without actually saving credentials.
+    if (svc != null && svc.isEnabled && !hasCreds) {
+      await svc.disable();
+    }
+    if (mounted) {
+      setState(() {
+        _canCheckBiometrics = can;
+        _hasStoredCredentials = hasCreds;
+      });
+    }
   }
 
   Future<void> _signInWithPassword() async {
@@ -106,7 +118,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _offerBiometricEnrollment(String email, String password) async {
     final svc = ref.read(biometricServiceProvider);
-    if (svc == null || svc.isEnabled || !_canCheckBiometrics) return;
+    if (svc == null || !_canCheckBiometrics) return;
+    // Offer if creds are not actually stored — even if a stale "enabled"
+    // flag exists. That way users can recover from an older app version's
+    // half-set state.
+    final alreadyStored = await svc.hasStoredCredentials();
+    if (alreadyStored) return;
+    if (!mounted) return;
     final shouldEnable = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -132,13 +150,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final authed = await svc.authenticate(reason: 'Verify to enable biometrics');
     if (authed) {
       await svc.enrollWithCredentials(email: email, password: password);
+      if (mounted) setState(() => _hasStoredCredentials = true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final svc = ref.watch(biometricServiceProvider);
-    final showBiometric = svc != null && svc.isEnabled && _canCheckBiometrics;
+    // Only show the biometric button when creds are actually stored.
+    final showBiometric =
+        svc != null && _canCheckBiometrics && _hasStoredCredentials;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
