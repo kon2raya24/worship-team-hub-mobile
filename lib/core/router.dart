@@ -31,7 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       supabase.auth.onAuthStateChange,
     ),
     redirect: (context, state) {
-      final signedIn = ref.read(isSignedInProvider);
+      final signedIn = ref.read(effectiveSignedInProvider);
       final loc = state.matchedLocation;
       const unauthOk = {'/login', '/signup', '/forgot-password'};
 

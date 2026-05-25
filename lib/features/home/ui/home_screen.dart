@@ -8,49 +8,27 @@ import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_errors.dart';
+import '../../auth/auth_provider.dart';
 import '../../auth/biometric_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   Future<void> _signOut(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
+    await showDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: Sanctuary.ink2,
-        title: const Text('Sign out?'),
-        content: const Text(
-          'You\'ll be returned to the login screen. Your offline cache and '
-          'fingerprint enrolment stay on this device.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Stay signed in'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Sanctuary.destructive,
-            ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Sign out'),
-          ),
-        ],
-      ),
+      barrierDismissible: false,
+      builder: (_) => const _SignOutDialog(),
     );
-    if (confirmed != true) return;
-    // NOTE: deliberately *not* clearing the biometric enrolment here. The
-    // whole point of fingerprint sign-in is to skip the password on the
-    // next launch — wiping it on every sign-out would defeat that. The
-    // user can disable biometric explicitly from the home screen card.
-    await supabase.auth.signOut();
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final email = currentUser?.email ?? 'team';
+    final offline = ref.watch(offlineModeProvider);
     // Fire-and-forget initial sync. Errors are surfaced via the badge below.
-    final sync = ref.watch(startupSyncProvider);
+    final sync = offline ? const AsyncValue<SyncResult>.data(SyncResult.skipped)
+        : ref.watch(startupSyncProvider);
     final connectivity = ref.watch(connectivityProvider);
     final online = connectivity.value != null && isOnline(connectivity.value!);
     wireAutoSync(ref);
@@ -82,7 +60,10 @@ class HomeScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             Text('Welcome back', style: Sanctuary.display(fontSize: 28)),
             const SizedBox(height: 12),
-            _SyncBadge(state: sync, online: online),
+            if (offline)
+              _OfflineBanner()
+            else
+              _SyncBadge(state: sync, online: online),
             const SizedBox(height: 16),
             const _BiometricToggle(),
             const SizedBox(height: 16),
@@ -189,6 +170,40 @@ class _SyncBadge extends StatelessWidget {
         const SizedBox(width: 6),
         Text(label, style: Sanctuary.mono(fontSize: 11, color: color)),
       ],
+    );
+  }
+}
+
+/// Shown on the home screen when the user signed in via biometric while
+/// offline. The Drift cache is readable; writes silently fail.
+class _OfflineBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Sanctuary.auroraAmber.withValues(alpha: 0.1),
+        border: Border.all(color: Sanctuary.auroraAmber.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cloud_off,
+              size: 14, color: Sanctuary.auroraAmber),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Offline · using cached data from your last sync. '
+              'Posting + edits are paused until you\'re back online.',
+              style: const TextStyle(
+                color: Sanctuary.auroraAmber,
+                fontSize: 11,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -337,6 +352,71 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Confirms sign-out and runs supabase.auth.signOut() with a visible spinner
+/// so the user doesn't tap again thinking nothing happened.
+class _SignOutDialog extends ConsumerStatefulWidget {
+  const _SignOutDialog();
+
+  @override
+  ConsumerState<_SignOutDialog> createState() => _SignOutDialogState();
+}
+
+class _SignOutDialogState extends ConsumerState<_SignOutDialog> {
+  bool _busy = false;
+
+  Future<void> _confirm() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      // Clear offline-mode regardless so the next launch shows /login.
+      ref.read(offlineModeProvider.notifier).state = false;
+      await supabase.auth.signOut();
+      if (mounted) Navigator.of(context).pop();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not sign out. Try again.')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Sanctuary.ink2,
+      title: const Text('Sign out?'),
+      content: const Text(
+        'You\'ll be returned to the login screen. Your offline cache and '
+        'fingerprint enrolment stay on this device.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: const Text('Stay signed in'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Sanctuary.destructive,
+          ),
+          onPressed: _busy ? null : _confirm,
+          child: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Sign out'),
+        ),
+      ],
     );
   }
 }

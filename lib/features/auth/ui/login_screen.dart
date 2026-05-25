@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
 import '../auth_errors.dart';
+import '../auth_provider.dart';
 import '../biometric_service.dart';
 import 'brand_mark.dart';
 
@@ -93,6 +94,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
     try {
       await supabase.auth.signInWithPassword(email: email, password: password);
+      // Real session restored — leave offline mode if we were in it.
+      ref.read(offlineModeProvider.notifier).state = false;
       await _persistRememberMe(email);
       if (!mounted) return;
       await _offerBiometricEnrollment(email, password);
@@ -132,6 +135,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         password: creds.password,
       );
     } catch (e) {
+      // If the failure is a network issue, drop into offline mode using
+      // the biometric-verified credentials. The cached Drift data is fully
+      // readable; writes that hit Supabase will fail naturally.
+      final s = e.toString().toLowerCase();
+      final offline = s.contains('socketexception') ||
+          s.contains('failed host lookup') ||
+          s.contains('network is unreachable') ||
+          s.contains('connection refused') ||
+          s.contains('timeoutexception');
+      if (offline) {
+        ref.read(offlineModeProvider.notifier).state = true;
+        // Router redirect will land on /
+        return;
+      }
       if (mounted) {
         setState(() {
           _error = '${friendlyAuthError(e)} Type your password to re-enrol.';

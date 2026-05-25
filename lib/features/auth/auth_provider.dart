@@ -4,7 +4,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/supabase_client.dart';
 
 /// Stream of auth state changes — emits whenever the user signs in / out.
-/// Use `ref.watch(authStateProvider)` to react to session changes.
 final authStateProvider = StreamProvider<AuthState>((ref) {
   return supabase.auth.onAuthStateChange;
 });
@@ -15,7 +14,31 @@ final sessionProvider = Provider<Session?>((ref) {
   return supabase.auth.currentSession;
 });
 
-/// True when a user is signed in. Cheap to watch.
+/// True when a real Supabase session is active.
 final isSignedInProvider = Provider<bool>((ref) {
   return ref.watch(sessionProvider) != null;
+});
+
+/// Offline mode: set true when biometric sign-in succeeded but the network
+/// call to Supabase failed. The router treats this as "signed in" so the
+/// user can browse cached Drift data. Writes that hit Supabase will still
+/// fail naturally — code paths that need a real user check
+/// supabase.auth.currentUser independently.
+final offlineModeProvider = StateProvider<bool>((ref) => false);
+
+/// Combined "user can see the home screen" check.
+final effectiveSignedInProvider = Provider<bool>((ref) {
+  if (ref.watch(isSignedInProvider)) return true;
+  return ref.watch(offlineModeProvider);
+});
+
+/// The email used for the active session, falling back to the offline
+/// credentials when in offline mode.
+final activeEmailProvider = Provider<String?>((ref) {
+  final session = ref.watch(sessionProvider);
+  if (session?.user.email != null) return session!.user.email;
+  // In offline mode the email is read from secure storage by the screens that
+  // need it (BiometricService.readCredentials); we don't expose it here so
+  // we don't have to bind the provider to async storage.
+  return null;
 });
