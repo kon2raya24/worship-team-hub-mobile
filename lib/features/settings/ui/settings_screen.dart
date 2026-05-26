@@ -6,6 +6,7 @@ import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
+import '../../auth/ui/biometric_toggle.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -149,6 +150,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            Text('SECURITY', style: Sanctuary.mono(fontSize: 10)),
+            const SizedBox(height: 8),
+            const BiometricToggle(),
             const SizedBox(height: 12),
             const Text(
               'Password and email changes happen on the web app for now.',

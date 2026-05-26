@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../../../core/theme.dart';
@@ -164,12 +165,64 @@ class _SongBody extends StatefulWidget {
 
 class _SongBodyState extends State<_SongBody> {
   late int _transpose = widget.initialTranspose;
+  int _capo = 0;
   double _fontSize = 14;
   final ScrollController _scroll = ScrollController();
   Timer? _autoScrollTimer;
   bool _autoScrolling = false;
   // Pixels per tick at ~60Hz. 0.4 ≈ slow read; 1.6 ≈ fast playback.
   double _scrollSpeed = 0.6;
+  // Persisted prefs key prefix — one entry per song so each chart keeps
+  // its own transpose / capo / font / speed across visits.
+  String get _prefsKey => 'chord-viewer:${widget.songId}';
+  bool _hydrated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _hydrate();
+  }
+
+  Future<void> _hydrate() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefsKey);
+      if (raw == null) {
+        if (mounted) setState(() => _hydrated = true);
+        return;
+      }
+      // Stored as: "transpose,capo,fontSize,scrollSpeed"
+      final parts = raw.split(',');
+      if (parts.length >= 4 && mounted) {
+        setState(() {
+          _transpose = int.tryParse(parts[0]) ?? _transpose;
+          _capo = int.tryParse(parts[1])?.clamp(0, 11) ?? 0;
+          _fontSize =
+              (double.tryParse(parts[2]) ?? _fontSize).clamp(11, 22).toDouble();
+          _scrollSpeed = (double.tryParse(parts[3]) ?? _scrollSpeed)
+              .clamp(0.15, 2.4)
+              .toDouble();
+          _hydrated = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _hydrated = true);
+    }
+  }
+
+  Future<void> _persist() async {
+    if (!_hydrated) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _prefsKey,
+        '$_transpose,$_capo,$_fontSize,$_scrollSpeed',
+      );
+    } catch (_) {
+      // Quota / permission errors are non-fatal — settings just won't carry
+      // over to the next session.
+    }
+  }
 
   @override
   void dispose() {
@@ -205,14 +258,19 @@ class _SongBodyState extends State<_SongBody> {
 
   void _setSpeed(double v) {
     setState(() => _scrollSpeed = v.clamp(0.15, 2.4));
+    _persist();
   }
 
   @override
   Widget build(BuildContext context) {
     final body = widget.chordproBody.trim();
+    // Capo lowers the chord NAMES on the chart by the capo position so the
+    // player can use the same shapes; effective render offset is
+    // (transpose - capo). Matches the web ChordViewer.
+    final renderOffset = _transpose - _capo;
     final parsed = body.isEmpty
         ? null
-        : ChordPro.transpose(ChordPro.parse(body), _transpose);
+        : ChordPro.transpose(ChordPro.parse(body), renderOffset);
     final currentKey = parsed?.key ?? widget.originalKey;
 
     return Stack(
@@ -234,16 +292,36 @@ class _SongBodyState extends State<_SongBody> {
               originalKey: widget.originalKey,
               currentKey: currentKey,
               transpose: _transpose,
+              capo: _capo,
               autoScrolling: _autoScrolling,
-              onTransposeDown: () => setState(() => _transpose -= 1),
-              onTransposeUp: () => setState(() => _transpose += 1),
-              onTransposeReset: () => setState(() => _transpose = 0),
-              onFontDown: () => setState(
-                () => _fontSize = (_fontSize - 1).clamp(11, 22),
-              ),
-              onFontUp: () => setState(
-                () => _fontSize = (_fontSize + 1).clamp(11, 22),
-              ),
+              onTransposeDown: () {
+                setState(() => _transpose -= 1);
+                _persist();
+              },
+              onTransposeUp: () {
+                setState(() => _transpose += 1);
+                _persist();
+              },
+              onTransposeReset: () {
+                setState(() => _transpose = 0);
+                _persist();
+              },
+              onCapoDown: () {
+                setState(() => _capo = (_capo - 1).clamp(0, 11));
+                _persist();
+              },
+              onCapoUp: () {
+                setState(() => _capo = (_capo + 1).clamp(0, 11));
+                _persist();
+              },
+              onFontDown: () {
+                setState(() => _fontSize = (_fontSize - 1).clamp(11, 22));
+                _persist();
+              },
+              onFontUp: () {
+                setState(() => _fontSize = (_fontSize + 1).clamp(11, 22));
+                _persist();
+              },
               onToggleAutoScroll: _toggleAutoScroll,
             ),
             const SizedBox(height: 16),
@@ -281,10 +359,13 @@ class _Controls extends StatelessWidget {
     required this.originalKey,
     required this.currentKey,
     required this.transpose,
+    required this.capo,
     required this.autoScrolling,
     required this.onTransposeDown,
     required this.onTransposeUp,
     required this.onTransposeReset,
+    required this.onCapoDown,
+    required this.onCapoUp,
     required this.onFontDown,
     required this.onFontUp,
     required this.onToggleAutoScroll,
@@ -293,10 +374,13 @@ class _Controls extends StatelessWidget {
   final String? originalKey;
   final String? currentKey;
   final int transpose;
+  final int capo;
   final bool autoScrolling;
   final VoidCallback onTransposeDown;
   final VoidCallback onTransposeUp;
   final VoidCallback onTransposeReset;
+  final VoidCallback onCapoDown;
+  final VoidCallback onCapoUp;
   final VoidCallback onFontDown;
   final VoidCallback onFontUp;
   final VoidCallback onToggleAutoScroll;
@@ -304,38 +388,99 @@ class _Controls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Column(
         children: [
-          if ((currentKey ?? '').isNotEmpty) ...[
-            GestureDetector(
-              onTap: transpose != 0 ? onTransposeReset : null,
-              child: _Pill(
-                label: 'KEY',
-                value: (transpose != 0 &&
-                        (originalKey ?? '').isNotEmpty &&
-                        originalKey != currentKey)
-                    ? '${originalKey!} → ${currentKey!}'
-                    : currentKey!,
-                accent: Sanctuary.auroraViolet,
-              ),
-            ),
-            const SizedBox(width: 10),
-          ],
-          const Spacer(),
-          _IconBtn(
-            icon: autoScrolling ? Icons.pause : Icons.play_arrow,
-            onTap: onToggleAutoScroll,
-            highlighted: autoScrolling,
+          Row(
+            children: [
+              if ((currentKey ?? '').isNotEmpty)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: transpose != 0 ? onTransposeReset : null,
+                    child: _Pill(
+                      label: 'KEY',
+                      value: (transpose != 0 &&
+                              (originalKey ?? '').isNotEmpty &&
+                              originalKey != currentKey)
+                          ? '${originalKey!} → ${currentKey!}'
+                          : currentKey!,
+                      accent: Sanctuary.auroraViolet,
+                    ),
+                  ),
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: 8),
+              _IconBtn(icon: Icons.remove, onTap: onTransposeDown),
+              const SizedBox(width: 4),
+              _IconBtn(icon: Icons.add, onTap: onTransposeUp),
+            ],
           ),
-          const SizedBox(width: 12),
-          _IconBtn(icon: Icons.text_decrease, onTap: onFontDown),
-          const SizedBox(width: 4),
-          _IconBtn(icon: Icons.text_increase, onTap: onFontUp),
-          const SizedBox(width: 12),
-          _IconBtn(icon: Icons.remove, onTap: onTransposeDown),
-          const SizedBox(width: 4),
-          _IconBtn(icon: Icons.add, onTap: onTransposeUp),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _MiniPill(
+                label: 'CAPO',
+                value: '$capo',
+                accent: Sanctuary.auroraCyan,
+              ),
+              const SizedBox(width: 4),
+              _IconBtn(icon: Icons.remove, onTap: onCapoDown),
+              const SizedBox(width: 4),
+              _IconBtn(icon: Icons.add, onTap: onCapoUp),
+              const Spacer(),
+              _IconBtn(icon: Icons.text_decrease, onTap: onFontDown),
+              const SizedBox(width: 4),
+              _IconBtn(icon: Icons.text_increase, onTap: onFontUp),
+              const SizedBox(width: 8),
+              _IconBtn(
+                icon: autoScrolling ? Icons.pause : Icons.play_arrow,
+                onTap: onToggleAutoScroll,
+                highlighted: autoScrolling,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tighter pill used inside the controls row alongside the transpose/capo
+/// buttons. Same look as _Pill but smaller.
+class _MiniPill extends StatelessWidget {
+  const _MiniPill({
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: accent.withValues(alpha: 0.1),
+        border: Border.all(color: accent.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: Sanctuary.mono(fontSize: 9, color: accent)),
+          const SizedBox(width: 5),
+          Text(
+            value,
+            style: Sanctuary.mono(
+              fontSize: 12,
+              color: accent,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0,
+            ),
+          ),
         ],
       ),
     );

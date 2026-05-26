@@ -262,6 +262,7 @@ class _AssignForm extends ConsumerWidget {
           Expanded(
             child: DropdownButtonFormField<String>(
               initialValue: picked?.id,
+              isExpanded: true,
               decoration: const InputDecoration(
                 isDense: true,
                 hintText: 'Pick member',
@@ -286,6 +287,7 @@ class _AssignForm extends ConsumerWidget {
           Expanded(
             child: DropdownButtonFormField<String>(
               initialValue: role,
+              isExpanded: true,
               decoration: const InputDecoration(
                 isDense: true,
               ),

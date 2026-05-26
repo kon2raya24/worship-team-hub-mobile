@@ -215,10 +215,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (!matched) return false;
     ref.read(offlineModeProvider.notifier).state = true;
     await _persistRememberMe(email);
-    if (!mounted) return true;
-    // GoRouter's refreshListenable only fires on supabase auth state, not
-    // Riverpod changes — push the home route ourselves.
-    context.go('/');
+    // The router watches effectiveSignedInProvider, so toggling offline mode
+    // auto-redirects to '/' — no manual context.go needed.
     return true;
   }
 
@@ -246,14 +244,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     // Fast path: if we know we're offline, skip the network call entirely.
-    // The biometric prompt has already proved who the user is.
+    // The biometric prompt has already proved who the user is. Toggling
+    // offline mode is enough — the router auto-redirects to '/'.
     final connectivity = await _currentConnectivity();
     if (connectivity != null && !isOnline(connectivity)) {
       ref.read(offlineModeProvider.notifier).state = true;
-      if (mounted) {
-        setState(() => _busy = false);
-        context.go('/');
-      }
+      if (mounted) setState(() => _busy = false);
       return;
     }
     try {
@@ -270,9 +266,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // online) means we need a fresh password.
       if (_isNetworkError(e) && mounted) {
         ref.read(offlineModeProvider.notifier).state = true;
-        // GoRouter's refreshListenable only fires on supabase auth state,
-        // not Riverpod changes — push the home route ourselves.
-        context.go('/');
+        // Router watches effectiveSignedInProvider — it will redirect us.
         return;
       }
       if (mounted) {
@@ -287,14 +281,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  // SharedPreferences flag — true once the user has been offered the
+  // biometric enrolment prompt at least once. Prevents nagging on every
+  // successful sign-in if they tap "Not now". Re-prompts only via the
+  // explicit "Set up" control on Settings.
+  static const _biometricPromptSeenKey = 'biometric_prompt_seen';
+
   Future<void> _offerBiometricEnrollment(String email, String password) async {
     final svc = ref.read(biometricServiceProvider);
     if (svc == null || !_canCheckBiometrics) return;
-    // Offer unless biometric is actually enabled AND creds are stored. Creds
-    // may already be stored by "Remember me" without biometric — in that
-    // case we still want to ask whether to enable fingerprint.
+    // Already enrolled — nothing to offer.
     final alreadyEnrolled = svc.isEnabled && await svc.hasStoredCredentials();
     if (alreadyEnrolled) return;
+    // One-time prompt: skip if the user already saw + dismissed it.
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.getBool(_biometricPromptSeenKey) == true) return;
     if (!mounted) return;
     final shouldEnable = await showDialog<bool>(
       context: context,
@@ -303,7 +304,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         title: const Text('Enable fingerprint sign-in?'),
         content: const Text(
           'Sign in next time with your fingerprint. Your credentials are stored '
-          'encrypted on this device only.',
+          'encrypted on this device only. You can change this later in Settings.',
         ),
         actions: [
           TextButton(
@@ -317,6 +318,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         ],
       ),
     );
+    // Mark seen regardless of choice — they made one, don't ask again.
+    await prefs.setBool(_biometricPromptSeenKey, true);
     if (shouldEnable != true) return;
     final authed = await svc.authenticate(reason: 'Verify to enable biometrics');
     if (authed) {

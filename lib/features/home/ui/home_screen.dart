@@ -8,9 +8,7 @@ import '../../../data/db/app_db.dart';
 import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
-import '../../auth/auth_errors.dart';
 import '../../auth/auth_provider.dart';
-import '../../auth/biometric_service.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -83,105 +81,30 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            Text('SIGNED IN AS', style: Sanctuary.mono(fontSize: 10)),
-            const SizedBox(height: 2),
-            Text(
-              greetTarget,
-              style: Sanctuary.mono(
-                fontSize: 12,
-                color: Sanctuary.foreground,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.05,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text('Welcome back', style: Sanctuary.display(fontSize: 26)),
-            const SizedBox(height: 10),
             if (offline)
               _OfflineBanner()
             else
               _SyncBadge(state: sync, online: online),
-            const SizedBox(height: 14),
-            const _BiometricToggle(),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
-            // Next service — most useful tap on a Sunday morning.
-            const _NextServiceCard(),
-            const SizedBox(height: 14),
+            // ─── Hero: time greeting + gradient verse ────────────────
+            _HeroCard(firstName: greetTarget.split(' ').first),
+            const SizedBox(height: 16),
 
-            // Quick-glance counts. Each chip is its own tap-target.
-            const _DashboardStats(),
-            const SizedBox(height: 20),
+            // ─── 4 stat cards: Library / Prayers / Next Role / Pinned
+            _DashboardStats(),
+            const SizedBox(height: 16),
 
-            // Two-column tile grid — feels denser on phones and lets us
-            // surface every module without an endless vertical scroll.
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              // Wider than tall — no awkward dead space inside each tile.
-              childAspectRatio: 1.5,
-              children: const [
-                _HomeTile(
-                  title: 'Songs',
-                  subtitle: 'Chord charts',
-                  icon: Icons.library_music_outlined,
-                  accent: Sanctuary.auroraViolet,
-                  path: '/songs',
-                ),
-                _HomeTile(
-                  title: 'Setlists',
-                  subtitle: 'Sunday plans',
-                  icon: Icons.queue_music_outlined,
-                  accent: Sanctuary.auroraCyan,
-                  path: '/setlists',
-                ),
-                _HomeTile(
-                  title: 'Schedule',
-                  subtitle: 'Team roster',
-                  icon: Icons.calendar_month_outlined,
-                  accent: Sanctuary.auroraMagenta,
-                  path: '/schedule',
-                ),
-                _HomeTile(
-                  title: 'Devotions',
-                  subtitle: 'Weekly reflections',
-                  icon: Icons.menu_book_outlined,
-                  accent: Sanctuary.auroraAmber,
-                  path: '/devotions',
-                ),
-                _HomeTile(
-                  title: 'Prayer',
-                  subtitle: 'Requests + answered',
-                  icon: Icons.favorite_outline,
-                  accent: Sanctuary.auroraMagenta,
-                  path: '/prayer',
-                ),
-                _HomeTile(
-                  title: 'Announcements',
-                  subtitle: 'Team updates',
-                  icon: Icons.campaign_outlined,
-                  accent: Sanctuary.auroraCyan,
-                  path: '/announcements',
-                ),
-                _HomeTile(
-                  title: 'Games',
-                  subtitle: 'Music drills',
-                  icon: Icons.sports_esports_outlined,
-                  accent: Sanctuary.auroraViolet,
-                  path: '/games',
-                ),
-                _HomeTile(
-                  title: 'Team',
-                  subtitle: 'Members + roles',
-                  icon: Icons.groups_outlined,
-                  accent: Sanctuary.auroraAmber,
-                  path: '/team',
-                ),
-              ],
-            ),
+            // ─── 2 feature cards: Next Sunday + Latest Devotion ──────
+            const _DashboardFeatures(),
+            const SizedBox(height: 16),
+
+            // ─── Practice (all 8 games in a compact grid) ────────────
+            const _PracticeSection(),
+            const SizedBox(height: 16),
+
+            // ─── Pinned announcements ────────────────────────────────
+            const _PinnedAnnouncementsSection(),
           ],
         ),
       ),
@@ -268,160 +191,6 @@ class _OfflineBanner extends StatelessWidget {
   }
 }
 
-/// Status card for biometric sign-in. Enrollment happens at the login screen
-/// (we need the password to store), so this card only surfaces the current
-/// state and offers a Disable action. Hidden if the device has no biometric
-/// hardware.
-class _BiometricToggle extends ConsumerStatefulWidget {
-  const _BiometricToggle();
-
-  @override
-  ConsumerState<_BiometricToggle> createState() => _BiometricToggleState();
-}
-
-class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
-  bool? _canCheck;
-  bool _busy = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _probe();
-  }
-
-  Future<void> _probe() async {
-    final svc = ref.read(biometricServiceProvider);
-    final can = await svc?.canCheckBiometrics() ?? false;
-    if (mounted) setState(() => _canCheck = can);
-  }
-
-  Future<void> _disable() async {
-    final svc = ref.read(biometricServiceProvider);
-    await svc?.disable();
-    if (mounted) setState(() {});
-  }
-
-  /// Enrol from the home screen after the user declined the post-login
-  /// dialog. We need the password, so this opens a confirm dialog that
-  /// re-validates the password against Supabase before storing.
-  Future<void> _enrol() async {
-    final svc = ref.read(biometricServiceProvider);
-    final email = currentUser?.email;
-    if (svc == null || email == null || _busy) return;
-
-    final password = await showDialog<String?>(
-      context: context,
-      builder: (ctx) => const _PasswordConfirmDialog(),
-    );
-    if (password == null || password.isEmpty) return;
-
-    setState(() => _busy = true);
-    try {
-      // Re-authenticate to confirm the password is correct before storing it.
-      await supabase.auth
-          .signInWithPassword(email: email, password: password)
-          .timeout(const Duration(seconds: 10));
-      if (!mounted) return;
-      final authed = await svc.authenticate(
-        reason: 'Verify to enable fingerprint sign-in',
-      );
-      if (!authed) return;
-      await svc.enrollWithCredentials(
-        email: email,
-        password: password,
-        userId: supabase.auth.currentUser?.id,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Fingerprint sign-in enabled.'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(friendlyAuthError(e))),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final svc = ref.watch(biometricServiceProvider);
-    if (svc == null || _canCheck != true) return const SizedBox.shrink();
-
-    final enabled = svc.isEnabled;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
-      decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
-        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.fingerprint,
-            size: 22,
-            color: enabled ? Sanctuary.auroraCyan : Sanctuary.muted,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Fingerprint sign-in',
-                  style: Sanctuary.display(fontSize: 14),
-                ),
-                Text(
-                  enabled
-                      ? 'On · skip the password on next sign-in'
-                      : 'Off · tap Set up to enrol now',
-                  style: const TextStyle(
-                    color: Sanctuary.muted,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (enabled)
-            TextButton(
-              onPressed: _busy ? null : _disable,
-              child: const Text(
-                'Disable',
-                style: TextStyle(color: Sanctuary.destructive),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: _busy ? null : _enrol,
-              child: _busy
-                  ? const SizedBox(
-                      height: 14,
-                      width: 14,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Sanctuary.auroraCyan,
-                      ),
-                    )
-                  : const Text(
-                      'Set up',
-                      style: TextStyle(color: Sanctuary.auroraCyan),
-                    ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 /// Confirms sign-out and runs supabase.auth.signOut() with a visible spinner
 /// so the user doesn't tap again thinking nothing happened.
 class _SignOutDialog extends ConsumerStatefulWidget {
@@ -487,81 +256,208 @@ class _SignOutDialogState extends ConsumerState<_SignOutDialog> {
   }
 }
 
-class _PasswordConfirmDialog extends StatefulWidget {
-  const _PasswordConfirmDialog();
+// ════════════════════════════════════════════════════════════════════════
+// Dashboard sections — mirrors the web home page (hero + stats + features
+// + practice + pinned announcements).
+// ════════════════════════════════════════════════════════════════════════
 
-  @override
-  State<_PasswordConfirmDialog> createState() => _PasswordConfirmDialogState();
+String _greetingFor(int hour) {
+  if (hour < 5) return 'Good evening';
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
 }
 
-class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
-  final _controller = TextEditingController();
-  bool _obscure = true;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+/// Aurora hero card with the worship-team verse. Uses a real-time clock
+/// snapshot for the eyebrow so the greeting matches the phone's local
+/// time, not UTC.
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.firstName});
+  final String firstName;
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Sanctuary.ink2,
-      title: const Text('Enter your password'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Confirm your password to enable fingerprint sign-in. We\'ll '
-            'store it encrypted on this device only.',
-            style: TextStyle(color: Sanctuary.muted, fontSize: 13),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            obscureText: _obscure,
-            autofocus: true,
-            decoration: InputDecoration(
-              hintText: 'Password',
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscure ? Icons.visibility_off : Icons.visibility,
-                  size: 18,
-                ),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
-            ),
-            onSubmitted: (v) => Navigator.of(context).pop(v),
+    final now = DateTime.now();
+    final greet = _greetingFor(now.hour).toUpperCase();
+    final weekday = DateFormat('EEEE').format(now).toUpperCase();
+    final name = firstName.isEmpty ? 'Team' : firstName;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF1B0E3D),
+            Color(0xFF0A1A33),
+            Color(0xFF1B0A2A),
+          ],
+        ),
+        border: Border.all(color: Sanctuary.hairline),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+        boxShadow: [
+          BoxShadow(
+            color: Sanctuary.auroraViolet.withValues(alpha: 0.18),
+            blurRadius: 24,
+            spreadRadius: -8,
           ),
         ],
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('Cancel'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.auto_awesome,
+                  size: 12, color: Sanctuary.muted),
+              const SizedBox(width: 6),
+              Text(
+                '$greet · $weekday',
+                style: Sanctuary.mono(fontSize: 10, color: Sanctuary.muted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Gradient text — paint only the highlighted middle phrase with
+          // the aurora gradient, leave the rest white.
+          RichText(
+            text: TextSpan(
+              style: Sanctuary.display(
+                fontSize: 26,
+                fontWeight: FontWeight.w700,
+                color: Sanctuary.foreground,
+              ).copyWith(height: 1.12),
+              children: [
+                TextSpan(text: '$name, '),
+                WidgetSpan(
+                  child: ShaderMask(
+                    shaderCallback: (rect) => const LinearGradient(
+                      colors: [
+                        Sanctuary.auroraCyan,
+                        Sanctuary.auroraViolet,
+                        Sanctuary.auroraMagenta,
+                      ],
+                    ).createShader(rect),
+                    child: Text(
+                      'let everything that has breath',
+                      style: Sanctuary.display(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ).copyWith(height: 1.12),
+                    ),
+                  ),
+                ),
+                const TextSpan(text: ' praise the Lord.'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            "— Psalm 150:6. Here's what your worship team is up to today.",
+            style: const TextStyle(
+              color: Sanctuary.muted,
+              fontSize: 12,
+              height: 1.45,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2×2 grid of count cards. Songs / Open Prayers / Your Next Role /
+/// Pinned. Matches the web home's stat-card row.
+class _DashboardStats extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final songsCount = ref.watch(songsStreamProvider).value?.length;
+    final openPrayers = ref
+        .watch(prayerRequestsStreamProvider)
+        .value
+        ?.where((PrayerRequestRow p) => !p.isAnswered)
+        .length;
+    final pinnedCount = ref
+        .watch(announcementsStreamProvider)
+        .value
+        ?.where((AnnouncementRow a) => a.pinned)
+        .length;
+
+    final myId = currentUser?.id;
+    final myNext = myId == null
+        ? null
+        : ref
+            .watch(upcomingScheduleStreamProvider)
+            .value
+            ?.cast<UpcomingAssignment?>()
+            .firstWhere(
+              (a) => a?.assignment.userId == myId,
+              orElse: () => null,
+            );
+
+    final nextRoleValue = myNext?.assignment.role ?? '—';
+    final nextRoleSub = myNext == null
+        ? 'Not assigned'
+        : DateFormat('EEEE, MMM d').format(myNext.assignment.serviceDate);
+
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.4,
+      children: [
+        _StatCard(
+          label: 'Song library',
+          value: songsCount?.toString() ?? '—',
+          icon: Icons.library_music_outlined,
+          accent: Sanctuary.auroraViolet,
+          path: '/songs',
         ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(_controller.text),
-          child: const Text('Confirm'),
+        _StatCard(
+          label: 'Open prayers',
+          value: openPrayers?.toString() ?? '—',
+          icon: Icons.favorite_outline,
+          accent: openPrayers != null && openPrayers > 0
+              ? Sanctuary.auroraMagenta
+              : Sanctuary.auroraViolet,
+          path: '/prayer',
+        ),
+        _StatCard(
+          label: 'Your next role',
+          value: nextRoleValue,
+          sub: nextRoleSub,
+          icon: Icons.mic_none_outlined,
+          accent: Sanctuary.auroraCyan,
+          path: '/schedule',
+        ),
+        _StatCard(
+          label: 'Pinned',
+          value: pinnedCount?.toString() ?? '—',
+          icon: Icons.push_pin_outlined,
+          accent: Sanctuary.auroraAmber,
+          path: '/announcements',
         ),
       ],
     );
   }
 }
 
-class _HomeTile extends StatelessWidget {
-  const _HomeTile({
-    required this.title,
-    required this.subtitle,
+class _StatCard extends StatelessWidget {
+  const _StatCard({
+    required this.label,
+    required this.value,
     required this.icon,
     required this.accent,
     required this.path,
+    this.sub,
   });
-
-  final String title;
-  final String subtitle;
+  final String label;
+  final String value;
+  final String? sub;
   final IconData icon;
   final Color accent;
   final String path;
@@ -576,138 +472,57 @@ class _HomeTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                accent.withValues(alpha: 0.07),
-                Sanctuary.glass1,
-              ],
-            ),
-            border: Border.all(color: accent.withValues(alpha: 0.18)),
+            color: Sanctuary.glass1,
+            border: Border.all(color: accent.withValues(alpha: 0.22)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: accent.withValues(alpha: 0.15),
                   border: Border.all(color: accent.withValues(alpha: 0.35)),
                   borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
                 ),
-                child: Icon(icon, color: accent, size: 22),
+                child: Icon(icon, color: accent, size: 20),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      title,
-                      style: Sanctuary.display(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
+                      label.toUpperCase(),
+                      style: Sanctuary.mono(
+                        fontSize: 9,
                         color: Sanctuary.muted,
-                        fontSize: 11,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Surfaces the next upcoming setlist as a hero call-to-action — the most
-/// useful tap on a Sunday morning. Hidden when there are no upcoming
-/// services so the home screen doesn't show empty real estate.
-class _NextServiceCard extends ConsumerWidget {
-  const _NextServiceCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final setlistsAsync = ref.watch(upcomingSetlistsStreamProvider);
-    final next = setlistsAsync.value?.isNotEmpty == true
-        ? setlistsAsync.value!.first
-        : null;
-    if (next == null) return const SizedBox.shrink();
-
-    final dateLabel = DateFormat('EEEE, MMM d').format(next.serviceDate);
-    final theme = (next.theme ?? '').trim();
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-        onTap: () => context.push('/setlists/${next.id}'),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Sanctuary.auroraCyan.withValues(alpha: 0.12),
-                Sanctuary.auroraViolet.withValues(alpha: 0.10),
-              ],
-            ),
-            border: Border.all(color: Sanctuary.auroraCyan.withValues(alpha: 0.32)),
-            borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Sanctuary.auroraCyan.withValues(alpha: 0.18),
-                  border: Border.all(color: Sanctuary.auroraCyan.withValues(alpha: 0.4)),
-                  borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
-                ),
-                child: const Icon(Icons.event,
-                    color: Sanctuary.auroraCyan, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('NEXT SERVICE',
-                        style: Sanctuary.mono(
-                            fontSize: 9, color: Sanctuary.auroraCyan)),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 3),
                     Text(
-                      dateLabel,
+                      value,
                       style: Sanctuary.display(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (theme.isNotEmpty)
+                    if (sub != null && sub!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 2),
+                        padding: const EdgeInsets.only(top: 1),
                         child: Text(
-                          theme,
+                          sub!,
                           style: const TextStyle(
-                              color: Sanctuary.muted, fontSize: 12),
+                            color: Sanctuary.muted,
+                            fontSize: 10,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -715,8 +530,6 @@ class _NextServiceCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  size: 22, color: Sanctuary.muted),
             ],
           ),
         ),
@@ -725,86 +538,263 @@ class _NextServiceCard extends ConsumerWidget {
   }
 }
 
-/// Quick-glance counts so the home screen acts like a real dashboard
-/// instead of just a launcher.
-class _DashboardStats extends ConsumerWidget {
-  const _DashboardStats();
+/// Two stacked feature cards: Next Sunday + Latest Devotion. Each shows a
+/// short headline and a CTA — falls back to a "Create one" prompt when
+/// the data is empty.
+class _DashboardFeatures extends ConsumerWidget {
+  const _DashboardFeatures();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final songsCount = ref.watch(songsStreamProvider).value?.length;
-    final setlistsCount =
-        ref.watch(upcomingSetlistsStreamProvider).value?.length;
-    final openPrayers = ref
-        .watch(prayerRequestsStreamProvider)
-        .value
-        ?.where((PrayerRequestRow p) => !p.isAnswered)
-        .length;
-    final pinned = ref
-        .watch(announcementsStreamProvider)
-        .value
-        ?.where((AnnouncementRow a) => a.pinned)
-        .length;
+    final nextSetlist =
+        ref.watch(upcomingSetlistsStreamProvider).value?.firstOrNull;
+    final devotion = ref.watch(devotionsStreamProvider).value?.firstOrNull;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _StatChip(
-            label: 'Songs',
-            value: songsCount?.toString() ?? '—',
-            icon: Icons.library_music_outlined,
-            accent: Sanctuary.auroraViolet,
-            path: '/songs',
-          ),
+        _FeatureCard(
+          icon: Icons.calendar_today_outlined,
+          eyebrow: 'NEXT SUNDAY',
+          title: nextSetlist == null
+              ? 'No setlist yet'
+              : DateFormat('EEEE, MMM d').format(nextSetlist.serviceDate),
+          body: nextSetlist == null
+              ? 'Plan a setlist to get the band ready.'
+              : (nextSetlist.theme?.trim().isNotEmpty == true
+                  ? nextSetlist.theme!
+                  : 'Theme to be announced'),
+          cta: nextSetlist == null ? 'Create setlist' : 'Open setlist',
+          path: nextSetlist == null
+              ? '/setlists'
+              : '/setlists/${nextSetlist.id}',
+          accent: Sanctuary.auroraCyan,
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatChip(
-            label: 'Upcoming',
-            value: setlistsCount?.toString() ?? '—',
-            icon: Icons.queue_music_outlined,
-            accent: Sanctuary.auroraCyan,
-            path: '/setlists',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatChip(
-            label: 'Prayers',
-            value: openPrayers?.toString() ?? '—',
-            icon: Icons.favorite_outline,
-            accent: openPrayers != null && openPrayers > 0
-                ? Sanctuary.auroraMagenta
-                : Sanctuary.auroraViolet,
-            path: '/prayer',
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _StatChip(
-            label: 'Pinned',
-            value: pinned?.toString() ?? '—',
-            icon: Icons.push_pin_outlined,
-            accent: Sanctuary.auroraAmber,
-            path: '/announcements',
-          ),
+        const SizedBox(height: 10),
+        _FeatureCard(
+          icon: Icons.menu_book_outlined,
+          eyebrow: 'LATEST DEVOTION',
+          title: devotion?.title ?? 'No devotions yet',
+          body: devotion == null
+              ? 'Share the first devotion with your team.'
+              : (devotion.scriptureRef?.trim().isNotEmpty == true
+                  ? devotion.scriptureRef!
+                  : ''),
+          cta: devotion == null ? 'Write one' : 'Read devotion',
+          path: devotion == null ? '/devotions' : '/devotions/${devotion.id}',
+          accent: Sanctuary.auroraViolet,
         ),
       ],
     );
   }
 }
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({
-    required this.label,
-    required this.value,
+class _FeatureCard extends StatelessWidget {
+  const _FeatureCard({
+    required this.icon,
+    required this.eyebrow,
+    required this.title,
+    required this.body,
+    required this.cta,
+    required this.path,
+    required this.accent,
+  });
+  final IconData icon;
+  final String eyebrow;
+  final String title;
+  final String body;
+  final String cta;
+  final String path;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+        onTap: () => context.push(path),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Sanctuary.glass1,
+            border: Border.all(color: accent.withValues(alpha: 0.25)),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.15),
+                      border:
+                          Border.all(color: accent.withValues(alpha: 0.4)),
+                      borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                    ),
+                    child: Icon(icon, color: accent, size: 18),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(eyebrow,
+                      style: Sanctuary.mono(
+                          fontSize: 10, color: Sanctuary.muted)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: Sanctuary.display(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: Sanctuary.muted,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Text(
+                    cta,
+                    style: TextStyle(
+                      color: accent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(Icons.arrow_forward, size: 14, color: accent),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Practice" — surfaces all 8 games as compact icon tiles inside a card.
+class _PracticeSection extends StatelessWidget {
+  const _PracticeSection();
+
+  static const _games = <(String, IconData, Color, String)>[
+    ('Transpose', Icons.swap_horiz, Sanctuary.auroraViolet, '/games/transpose'),
+    ('Nashville', Icons.tag, Sanctuary.auroraAmber, '/games/nashville'),
+    ('Capo math', Icons.straighten, Sanctuary.success, '/games/capo'),
+    ('Key sigs', Icons.vpn_key_outlined, Sanctuary.auroraCyan, '/games/keys'),
+    ('BPM tapper', Icons.timer_outlined, Sanctuary.auroraMagenta, '/games/bpm'),
+    ('Intervals', Icons.linear_scale, Sanctuary.auroraMagenta,
+        '/games/intervals'),
+    ('Chord tones', Icons.adjust, Sanctuary.auroraCyan, '/games/chord-tones'),
+    ('Relative key', Icons.swap_vert, Sanctuary.auroraViolet,
+        '/games/relative'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Sanctuary.glass1,
+        border: Border.all(color: Sanctuary.hairline),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Sanctuary.auroraViolet.withValues(alpha: 0.15),
+                  border: Border.all(
+                      color: Sanctuary.auroraViolet.withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                ),
+                child: const Icon(Icons.sports_esports_outlined,
+                    color: Sanctuary.auroraViolet, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Practice',
+                style: Sanctuary.display(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Spacer(),
+              InkWell(
+                borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                onTap: () => context.push('/games'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        'All games',
+                        style: Sanctuary.mono(
+                          fontSize: 11,
+                          color: Sanctuary.muted,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward,
+                          size: 12, color: Sanctuary.muted),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.95,
+            children: _games
+                .map((g) => _PracticeTile(
+                      title: g.$1,
+                      icon: g.$2,
+                      accent: g.$3,
+                      path: g.$4,
+                    ))
+                .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PracticeTile extends StatelessWidget {
+  const _PracticeTile({
+    required this.title,
     required this.icon,
     required this.accent,
     required this.path,
   });
-
-  final String label;
-  final String value;
+  final String title;
   final IconData icon;
   final Color accent;
   final String path;
@@ -817,41 +807,37 @@ class _StatChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
         onTap: () => context.push(path),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           decoration: BoxDecoration(
             color: Sanctuary.glass1,
-            border: Border.all(color: accent.withValues(alpha: 0.22)),
+            border: Border.all(color: Sanctuary.hairline),
             borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
           ),
-          // mainAxisSize.min keeps each chip as short as its content needs,
-          // so a Row of them doesn't get pulled taller than necessary.
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Icon(icon, color: accent, size: 14),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: Sanctuary.mono(
-                        fontSize: 9,
-                        color: Sanctuary.muted,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  border: Border.all(color: accent.withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Icon(icon, color: accent, size: 16),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(
-                value,
-                style: Sanctuary.display(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Sanctuary.foreground,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w500,
+                  height: 1.0,
                 ),
               ),
             ],
@@ -861,3 +847,125 @@ class _StatChip extends StatelessWidget {
     );
   }
 }
+
+/// "Pinned announcements" — list of the announcements flagged pinned.
+class _PinnedAnnouncementsSection extends ConsumerWidget {
+  const _PinnedAnnouncementsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pinned = (ref.watch(announcementsStreamProvider).value ?? const [])
+        .where((a) => a.pinned)
+        .take(3)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Sanctuary.glass1,
+        border: Border.all(color: Sanctuary.hairline),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: Sanctuary.auroraMagenta.withValues(alpha: 0.15),
+                  border: Border.all(
+                      color: Sanctuary.auroraMagenta.withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                ),
+                child: const Icon(Icons.campaign_outlined,
+                    color: Sanctuary.auroraMagenta, size: 16),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Pinned announcements',
+                  style: Sanctuary.display(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              InkWell(
+                borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
+                onTap: () => context.push('/announcements'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text('All news',
+                          style: Sanctuary.mono(
+                              fontSize: 11, color: Sanctuary.muted)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward,
+                          size: 12, color: Sanctuary.muted),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (pinned.isEmpty)
+            const Text(
+              'Nothing pinned right now.',
+              style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+            )
+          else
+            ...pinned.map(
+              (a) => Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                          color: Sanctuary.auroraMagenta, width: 2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        a.title,
+                        style: Sanctuary.display(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (a.body.trim().isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            a.body,
+                            style: const TextStyle(
+                              color: Sanctuary.muted,
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+
