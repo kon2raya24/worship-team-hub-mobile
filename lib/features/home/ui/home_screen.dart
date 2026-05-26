@@ -4,11 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/update_checker.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
+
+/// Fires once per app session — keeps the OTA update check from running on
+/// every HomeScreen rebuild while still letting it run as soon as the user
+/// lands on the home tab.
+bool _updateCheckFired = false;
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -23,6 +29,12 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    if (!_updateCheckFired) {
+      _updateCheckFired = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        UpdateChecker.checkOnLaunch(context);
+      });
+    }
     final profile = ref.watch(currentProfileProvider).value;
     final name = (profile?.displayName ?? '').trim();
     // Offline mode has no live Supabase session, so currentUser.email is

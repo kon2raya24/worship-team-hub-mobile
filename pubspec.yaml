@@ -52,6 +52,11 @@ dependencies:
   local_auth_android: ^1.0.46
   flutter_secure_storage: ^9.2.2
 
+  # OTA update checker (polls GitHub Releases API, opens release page in
+  # the browser when a newer tag exists — no in-app install machinery).
+  http: ^1.2.2
+  package_info_plus: ^8.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
