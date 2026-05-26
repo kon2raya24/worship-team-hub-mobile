@@ -50,6 +50,58 @@ class GamesIndexScreen extends StatelessWidget {
             accent: Sanctuary.auroraMagenta,
             onTap: () => context.push('/games/bpm'),
           ),
+          const SizedBox(height: 12),
+          _GameCard(
+            title: 'Nashville Number Trainer',
+            blurb:
+                '"Go to the IV — now the vi." Read chord charts in Roman '
+                "numerals, or translate the leader's number cues to actual "
+                'chords on the fly.',
+            icon: Icons.tag,
+            accent: Sanctuary.auroraAmber,
+            onTap: () => context.push('/games/nashville'),
+          ),
+          const SizedBox(height: 12),
+          _GameCard(
+            title: 'Capo Calculator',
+            blurb:
+                'Leader switches the key two minutes before service. C shape at '
+                "fret 5 — what's that sounding? Trains the math you need on "
+                'stage with a capo.',
+            icon: Icons.straighten,
+            accent: Sanctuary.success,
+            onTap: () => context.push('/games/capo'),
+          ),
+          const SizedBox(height: 12),
+          _GameCard(
+            title: 'Interval Trainer',
+            blurb:
+                "What's a P5 above G? What interval is C → E? The alphabet of "
+                'melody and harmony — useful for vocalists picking out parts.',
+            icon: Icons.linear_scale,
+            accent: Sanctuary.auroraMagenta,
+            onTap: () => context.push('/games/intervals'),
+          ),
+          const SizedBox(height: 12),
+          _GameCard(
+            title: 'Chord Tones',
+            blurb:
+                'The 3rd of A. The ♭7th of G7. The 5th of F. Drills the harmony '
+                'notes singers and string players need at fingertip speed.',
+            icon: Icons.adjust,
+            accent: Sanctuary.auroraCyan,
+            onTap: () => context.push('/games/chord-tones'),
+          ),
+          const SizedBox(height: 12),
+          _GameCard(
+            title: 'Relative Key',
+            blurb:
+                'Major → minor and back. Em is the relative minor of which key? '
+                'Knowing relatives unlocks half of every worship reharmonization.',
+            icon: Icons.swap_vert,
+            accent: Sanctuary.auroraViolet,
+            onTap: () => context.push('/games/relative'),
+          ),
         ],
       ),
     );

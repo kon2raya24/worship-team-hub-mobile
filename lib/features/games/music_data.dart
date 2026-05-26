@@ -119,3 +119,77 @@ int? _noteIdx(String note) {
 /// import from the chord viewer module directly.
 String transposeChordInKey(String chord, int semitones, bool useFlats) =>
     ChordPro.transposeChord(chord, semitones, useFlats);
+
+// ─── Roman numerals / diatonic chords ─────────────────────────────────────
+
+const _majorScaleSemitones = [0, 2, 4, 5, 7, 9, 11];
+const _diatonicQuality = ['', 'm', 'm', '', '', 'm', 'dim'];
+
+/// Nashville / Roman numerals for the 7 diatonic chords of a major key.
+const romanNumerals = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+
+/// Diatonic chord at scale degree (0..6) of a major key. E.g. G + 4 → D.
+String diatonicChord(String key, int degree) {
+  final useFlats = keyUsesFlats(key);
+  final root = ChordPro.transposeChord(key, _majorScaleSemitones[degree], useFlats);
+  return '$root${_diatonicQuality[degree]}';
+}
+
+// ─── Relative major / minor ───────────────────────────────────────────────
+
+/// Relative minor of a major key (a minor 3rd below the major).
+String relativeMinor(String majorKey) {
+  final useFlats = keyUsesFlats(majorKey);
+  return '${ChordPro.transposeChord(majorKey, -3, useFlats)}m';
+}
+
+/// Relative major from a minor key. Strips an optional "m" suffix.
+String relativeMajor(String minorKey) {
+  final base =
+      minorKey.endsWith('m') ? minorKey.substring(0, minorKey.length - 1) : minorKey;
+  final flatMajor = ChordPro.transposeChord(base, 3, true);
+  if (keySignatures.containsKey(flatMajor) &&
+      keySignatures[flatMajor]!.usesFlats) {
+    return flatMajor;
+  }
+  return ChordPro.transposeChord(base, 3, false);
+}
+
+// ─── Intervals ────────────────────────────────────────────────────────────
+
+class MusicInterval {
+  const MusicInterval({required this.name, required this.short, required this.semitones});
+  final String name;
+  final String short;
+  final int semitones;
+}
+
+/// Worship-friendly interval set — skips tritone/m2 since they rarely
+/// matter for chord/voice-leading cues.
+const intervals = <MusicInterval>[
+  MusicInterval(name: 'Major 2nd', short: 'M2', semitones: 2),
+  MusicInterval(name: 'Minor 3rd', short: 'm3', semitones: 3),
+  MusicInterval(name: 'Major 3rd', short: 'M3', semitones: 4),
+  MusicInterval(name: 'Perfect 4th', short: 'P4', semitones: 5),
+  MusicInterval(name: 'Perfect 5th', short: 'P5', semitones: 7),
+  MusicInterval(name: 'Minor 6th', short: 'm6', semitones: 8),
+  MusicInterval(name: 'Major 6th', short: 'M6', semitones: 9),
+  MusicInterval(name: 'Minor 7th', short: 'm7', semitones: 10),
+  MusicInterval(name: 'Major 7th', short: 'M7', semitones: 11),
+  MusicInterval(name: 'Octave', short: 'P8', semitones: 12),
+];
+
+/// Note `semitones` above `from`, using flat spellings if `useFlats`.
+String noteAbove(String from, int semitones, {bool useFlats = false}) =>
+    ChordPro.transposeChord(from, semitones, useFlats);
+
+// ─── Capo helpers ─────────────────────────────────────────────────────────
+
+/// Sounding key when [shape] is played with capo at fret [capo]. Re-spells
+/// A# → Bb, D# → Eb, etc. so the answer reads like a worship band would
+/// call it.
+String shapeWithCapo(String shape, int capo) {
+  final sharp = ChordPro.transposeChord(shape, capo, false);
+  if (keySignatures.containsKey(sharp) && !keyUsesFlats(sharp)) return sharp;
+  return ChordPro.transposeChord(shape, capo, true);
+}

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,16 +26,33 @@ import '../features/games/ui/games_index_screen.dart';
 import '../features/games/ui/transpose_game_screen.dart';
 import '../features/games/ui/keys_game_screen.dart';
 import '../features/games/ui/bpm_game_screen.dart';
+import '../features/games/ui/nashville_game_screen.dart';
+import '../features/games/ui/capo_game_screen.dart';
+import '../features/games/ui/intervals_game_screen.dart';
+import '../features/games/ui/chord_tones_game_screen.dart';
+import '../features/games/ui/relative_game_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/team/ui/team_screen.dart';
 import 'supabase_client.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
+  // One notifier that bumps on either Supabase auth events *or* Riverpod
+  // changes to `effectiveSignedInProvider`. Without the Riverpod half, the
+  // router doesn't re-evaluate when the offline-mode flag flips, and the
+  // login screens have to push `context.go('/')` manually — a workaround
+  // that breaks the moment any other code path mutates the flag.
+  final refresh = _RouterRefresh();
+  final authSub =
+      supabase.auth.onAuthStateChange.listen((_) => refresh.bump());
+  ref.listen<bool>(effectiveSignedInProvider, (_, __) => refresh.bump());
+  ref.onDispose(() {
+    authSub.cancel();
+    refresh.dispose();
+  });
+
   return GoRouter(
     initialLocation: '/',
-    refreshListenable: GoRouterRefreshStream(
-      supabase.auth.onAuthStateChange,
-    ),
+    refreshListenable: refresh,
     redirect: (context, state) {
       final signedIn = ref.read(effectiveSignedInProvider);
       final loc = state.matchedLocation;
@@ -142,6 +157,26 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, __) => const BpmGameScreen(),
       ),
       GoRoute(
+        path: '/games/nashville',
+        builder: (_, __) => const NashvilleGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/capo',
+        builder: (_, __) => const CapoGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/intervals',
+        builder: (_, __) => const IntervalsGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/chord-tones',
+        builder: (_, __) => const ChordTonesGameScreen(),
+      ),
+      GoRoute(
+        path: '/games/relative',
+        builder: (_, __) => const RelativeGameScreen(),
+      ),
+      GoRoute(
         path: '/settings',
         builder: (_, __) => const SettingsScreen(),
       ),
@@ -153,19 +188,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-/// Bridges a Stream into a Listenable so GoRouter can re-evaluate redirects
-/// whenever the auth state changes.
-class GoRouterRefreshStream extends ChangeNotifier {
-  GoRouterRefreshStream(Stream<dynamic> stream) {
-    notifyListeners();
-    _sub = stream.listen((_) => notifyListeners());
-  }
-
-  late final StreamSubscription<dynamic> _sub;
-
-  @override
-  void dispose() {
-    _sub.cancel();
-    super.dispose();
-  }
+/// Plain ChangeNotifier that exposes `notifyListeners()` so the router
+/// provider can poke it from both the Supabase auth stream and a Riverpod
+/// listener on `effectiveSignedInProvider`.
+class _RouterRefresh extends ChangeNotifier {
+  void bump() => notifyListeners();
 }
