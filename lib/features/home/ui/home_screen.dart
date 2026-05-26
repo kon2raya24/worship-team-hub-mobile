@@ -53,7 +53,11 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        // Tinted ink so scrolling content doesn't show through and clip
+        // weirdly at the AppBar boundary.
+        backgroundColor: Sanctuary.ink1.withValues(alpha: 0.85),
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         title: const Text('Worship Hub'),
         actions: [
           IconButton(
@@ -117,7 +121,8 @@ class HomeScreen extends ConsumerWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              childAspectRatio: 1.08,
+              // Wider than tall — no awkward dead space inside each tile.
+              childAspectRatio: 1.5,
               children: const [
                 _HomeTile(
                   title: 'Songs',
@@ -569,7 +574,7 @@ class _HomeTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
         onTap: () => context.push(path),
         child: Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
@@ -582,8 +587,7 @@ class _HomeTile extends StatelessWidget {
             border: Border.all(color: accent.withValues(alpha: 0.18)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
               Container(
                 width: 40,
@@ -595,25 +599,34 @@ class _HomeTile extends StatelessWidget {
                 ),
                 child: Icon(icon, color: accent, size: 22),
               ),
-              const Spacer(),
-              Text(
-                title,
-                style: Sanctuary.display(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      style: Sanctuary.display(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        color: Sanctuary.muted,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  color: Sanctuary.muted,
-                  fontSize: 11.5,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -804,29 +817,41 @@ class _StatChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
         onTap: () => context.push(path),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           decoration: BoxDecoration(
             color: Sanctuary.glass1,
             border: Border.all(color: accent.withValues(alpha: 0.22)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
           ),
+          // mainAxisSize.min keeps each chip as short as its content needs,
+          // so a Row of them doesn't get pulled taller than necessary.
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: accent, size: 16),
-              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(icon, color: accent, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: Sanctuary.mono(
+                        fontSize: 9,
+                        color: Sanctuary.muted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
               Text(
                 value,
                 style: Sanctuary.display(
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                label,
-                style: Sanctuary.mono(
-                  fontSize: 9,
-                  color: Sanctuary.muted,
                 ),
               ),
             ],

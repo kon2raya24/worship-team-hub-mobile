@@ -87,10 +87,13 @@ class _LineWidget extends StatelessWidget {
         ),
       );
     }
+    // Wrap (not Row) so long lines spill onto the next visual row instead
+    // of overflowing the screen. Each segment keeps its chord-over-syllable
+    // alignment internally, so the wrap point sits cleanly between segments.
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.start,
         children: children,
       ),
     );
