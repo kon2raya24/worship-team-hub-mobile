@@ -82,13 +82,35 @@ class BiometricService {
     required String email,
     required String password,
   }) async {
+    await rememberCredentials(email: email, password: password);
+    await _prefs.setBool(_kBiometricEnabledKey, true);
+  }
+
+  /// Store credentials in secure storage without enabling biometric. Used by
+  /// the "Remember me" path so the same account can sign in offline by typing
+  /// the password — even on devices without (or that haven't opted in to)
+  /// biometric.
+  Future<void> rememberCredentials({
+    required String email,
+    required String password,
+  }) async {
     await _storage.write(key: _kEmailKey, value: email, aOptions: _secureOpts);
     await _storage.write(
       key: _kPasswordKey,
       value: password,
       aOptions: _secureOpts,
     );
-    await _prefs.setBool(_kBiometricEnabledKey, true);
+  }
+
+  /// Compare typed credentials against the last successfully signed-in pair.
+  /// Used as the offline-password fallback when the network is unreachable.
+  Future<bool> verifyStoredCredentials({
+    required String email,
+    required String password,
+  }) async {
+    final stored = await readCredentials();
+    if (stored == null) return false;
+    return stored.email == email && stored.password == password;
   }
 
   /// Read stored credentials (call after a successful biometric prompt).

@@ -1,11 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' show AuthException;
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../data/sync/connectivity.dart';
 import '../auth_errors.dart';
 import '../auth_provider.dart';
 import '../biometric_service.dart';
@@ -13,6 +15,21 @@ import 'brand_mark.dart';
 
 const _kRememberMeKey = 'remember_me';
 const _kRememberedEmailKey = 'remembered_email';
+const _kSignInTimeout = Duration(seconds: 10);
+
+/// True for errors that look like the device just can't reach Supabase
+/// (vs. a real auth rejection). Used to decide whether to fall back to the
+/// stored-credentials offline path.
+bool _isNetworkError(Object e) {
+  final s = e.toString().toLowerCase();
+  return s.contains('failed host lookup') ||
+      s.contains('network is unreachable') ||
+      s.contains('socketexception') ||
+      s.contains('connection refused') ||
+      s.contains('connection closed') ||
+      s.contains('timeoutexception') ||
+      s.contains('clientexception');
+}
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -93,18 +110,81 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _busy = true;
       _error = null;
     });
+
+    final svc = ref.read(biometricServiceProvider);
+    final connectivity = ref.read(connectivityProvider).value;
+    final knownOffline = connectivity != null && !isOnline(connectivity);
+
+    // Fast path: connectivity says we're offline. Skip the network call
+    // entirely and try to verify against the last-signed-in credentials.
+    if (knownOffline) {
+      final ok = await _tryOfflineSignIn(svc, email, password);
+      if (!mounted) return;
+      if (!ok) {
+        setState(() {
+          _busy = false;
+          _error =
+              "You're offline. Use the email and password you last signed in with on this device.";
+        });
+      }
+      return;
+    }
+
     try {
-      await supabase.auth.signInWithPassword(email: email, password: password);
+      await supabase.auth
+          .signInWithPassword(email: email, password: password)
+          .timeout(_kSignInTimeout);
       // Real session restored — leave offline mode if we were in it.
       ref.read(offlineModeProvider.notifier).state = false;
       await _persistRememberMe(email);
+      if (svc != null) {
+        if (_rememberMe) {
+          await svc.rememberCredentials(email: email, password: password);
+        } else {
+          // User opted out — forget any stored creds and disable biometric
+          // (biometric can't sign in without the password).
+          await svc.disable();
+          if (mounted) setState(() => _hasStoredCredentials = false);
+        }
+      }
       if (!mounted) return;
       await _offerBiometricEnrollment(email, password);
     } catch (e) {
+      // If the failure is network-shaped, try the offline path with the
+      // typed credentials. Real auth failures (bad password) fall through
+      // and show the friendly error.
+      if (_isNetworkError(e)) {
+        final ok = await _tryOfflineSignIn(svc, email, password);
+        if (!mounted) return;
+        if (ok) return;
+      }
       if (mounted) setState(() => _error = friendlyAuthError(e));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Verify typed creds against secure-storage and, on match, enter offline
+  /// mode + navigate home. Returns true if we successfully signed the user
+  /// in offline.
+  Future<bool> _tryOfflineSignIn(
+    BiometricService? svc,
+    String email,
+    String password,
+  ) async {
+    if (svc == null) return false;
+    final matched = await svc.verifyStoredCredentials(
+      email: email,
+      password: password,
+    );
+    if (!matched) return false;
+    ref.read(offlineModeProvider.notifier).state = true;
+    await _persistRememberMe(email);
+    if (!mounted) return true;
+    // GoRouter's refreshListenable only fires on supabase auth state, not
+    // Riverpod changes — push the home route ourselves.
+    context.go('/');
+    return true;
   }
 
   Future<void> _signInWithBiometric() async {
@@ -131,19 +211,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     try {
-      await supabase.auth.signInWithPassword(
-        email: creds.email,
-        password: creds.password,
-      );
+      await supabase.auth
+          .signInWithPassword(
+            email: creds.email,
+            password: creds.password,
+          )
+          .timeout(_kSignInTimeout);
     } catch (e) {
-      // The biometric already proved who the user is. If Supabase rejected
-      // the saved password (credentials changed online), we have to ask for
-      // a fresh password. Anything else is treated as a network failure and
-      // we drop into offline mode so the user can still read cached data.
-      final isAuth = e is AuthException &&
-          (e.message.toLowerCase().contains('invalid login') ||
-              e.message.toLowerCase().contains('credentials'));
-      if (!isAuth && mounted) {
+      // The biometric already proved who the user is. If the failure looks
+      // like a network problem, drop into offline mode so the user can still
+      // read cached data. A real AuthException (credentials changed
+      // online) means we need a fresh password.
+      if (_isNetworkError(e) && mounted) {
         ref.read(offlineModeProvider.notifier).state = true;
         // GoRouter's refreshListenable only fires on supabase auth state,
         // not Riverpod changes — push the home route ourselves.
@@ -165,11 +244,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _offerBiometricEnrollment(String email, String password) async {
     final svc = ref.read(biometricServiceProvider);
     if (svc == null || !_canCheckBiometrics) return;
-    // Offer if creds are not actually stored — even if a stale "enabled"
-    // flag exists. That way users can recover from an older app version's
-    // half-set state.
-    final alreadyStored = await svc.hasStoredCredentials();
-    if (alreadyStored) return;
+    // Offer unless biometric is actually enabled AND creds are stored. Creds
+    // may already be stored by "Remember me" without biometric — in that
+    // case we still want to ask whether to enable fingerprint.
+    final alreadyEnrolled = svc.isEnabled && await svc.hasStoredCredentials();
+    if (alreadyEnrolled) return;
     if (!mounted) return;
     final shouldEnable = await showDialog<bool>(
       context: context,
@@ -203,9 +282,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final svc = ref.watch(biometricServiceProvider);
-    // Only show the biometric button when creds are actually stored.
-    final showBiometric =
-        svc != null && _canCheckBiometrics && _hasStoredCredentials;
+    // Only show the biometric button when the user has explicitly enrolled
+    // biometric AND creds are present. "Remember me" alone (creds stored,
+    // biometric disabled) keeps the password-only sign-in flow.
+    final showBiometric = svc != null &&
+        _canCheckBiometrics &&
+        svc.isEnabled &&
+        _hasStoredCredentials;
 
     return Scaffold(
       backgroundColor: Colors.transparent,

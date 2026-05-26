@@ -294,7 +294,9 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
     setState(() => _busy = true);
     try {
       // Re-authenticate to confirm the password is correct before storing it.
-      await supabase.auth.signInWithPassword(email: email, password: password);
+      await supabase.auth
+          .signInWithPassword(email: email, password: password)
+          .timeout(const Duration(seconds: 10));
       if (!mounted) return;
       final authed = await svc.authenticate(
         reason: 'Verify to enable fingerprint sign-in',
