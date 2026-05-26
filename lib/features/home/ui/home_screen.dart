@@ -35,12 +35,19 @@ class HomeScreen extends ConsumerWidget {
         : email.isNotEmpty
             ? email.split('@').first
             : 'team';
-    final offline = ref.watch(offlineModeProvider);
-    // Fire-and-forget initial sync. Errors are surfaced via the badge below.
-    final sync = offline ? const AsyncValue<SyncResult>.data(SyncResult.skipped)
-        : ref.watch(startupSyncProvider);
+    final offlineMode = ref.watch(offlineModeProvider);
     final connectivity = ref.watch(connectivityProvider);
-    final online = connectivity.value != null && isOnline(connectivity.value!);
+    final connectivityKnown = connectivity.value != null;
+    final online = connectivityKnown && isOnline(connectivity.value!);
+    // Surface the amber "offline" banner whenever the device is actually
+    // offline OR we entered offline mode via the login screen. Without the
+    // connectivity check, a user who cold-starts with a still-valid cached
+    // Supabase session never saw the banner even though writes would fail.
+    final offline = offlineMode || (connectivityKnown && !online);
+    // Fire-and-forget initial sync. Errors are surfaced via the badge below.
+    final sync = offline
+        ? const AsyncValue<SyncResult>.data(SyncResult.skipped)
+        : ref.watch(startupSyncProvider);
     wireAutoSync(ref);
     return Scaffold(
       backgroundColor: Colors.transparent,

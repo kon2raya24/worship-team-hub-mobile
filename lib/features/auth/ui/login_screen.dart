@@ -391,6 +391,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           autofillHints: const [AutofillHints.email],
+                          autocorrect: false,
+                          textCapitalization: TextCapitalization.none,
                           decoration: const InputDecoration(hintText: 'Email'),
                         ),
                         const SizedBox(height: 12),
@@ -398,6 +400,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           controller: _password,
                           obscureText: true,
                           autofillHints: const [AutofillHints.password],
+                          autocorrect: false,
+                          enableSuggestions: false,
                           decoration: const InputDecoration(
                             hintText: 'Password',
                           ),
