@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../data/db/app_db.dart';
 import '../../../data/sync/connectivity.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
@@ -98,6 +99,14 @@ class HomeScreen extends ConsumerWidget {
               _SyncBadge(state: sync, online: online),
             const SizedBox(height: 14),
             const _BiometricToggle(),
+            const SizedBox(height: 20),
+
+            // Next service — most useful tap on a Sunday morning.
+            const _NextServiceCard(),
+            const SizedBox(height: 14),
+
+            // Quick-glance counts. Each chip is its own tap-target.
+            const _DashboardStats(),
             const SizedBox(height: 20),
 
             // Two-column tile grid — feels denser on phones and lets us
@@ -605,6 +614,220 @@ class _HomeTile extends StatelessWidget {
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Surfaces the next upcoming setlist as a hero call-to-action — the most
+/// useful tap on a Sunday morning. Hidden when there are no upcoming
+/// services so the home screen doesn't show empty real estate.
+class _NextServiceCard extends ConsumerWidget {
+  const _NextServiceCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final setlistsAsync = ref.watch(upcomingSetlistsStreamProvider);
+    final next = setlistsAsync.value?.isNotEmpty == true
+        ? setlistsAsync.value!.first
+        : null;
+    if (next == null) return const SizedBox.shrink();
+
+    final dateLabel = DateFormat('EEEE, MMM d').format(next.serviceDate);
+    final theme = (next.theme ?? '').trim();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+        onTap: () => context.push('/setlists/${next.id}'),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Sanctuary.auroraCyan.withValues(alpha: 0.12),
+                Sanctuary.auroraViolet.withValues(alpha: 0.10),
+              ],
+            ),
+            border: Border.all(color: Sanctuary.auroraCyan.withValues(alpha: 0.32)),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Sanctuary.auroraCyan.withValues(alpha: 0.18),
+                  border: Border.all(color: Sanctuary.auroraCyan.withValues(alpha: 0.4)),
+                  borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+                ),
+                child: const Icon(Icons.event,
+                    color: Sanctuary.auroraCyan, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('NEXT SERVICE',
+                        style: Sanctuary.mono(
+                            fontSize: 9, color: Sanctuary.auroraCyan)),
+                    const SizedBox(height: 4),
+                    Text(
+                      dateLabel,
+                      style: Sanctuary.display(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (theme.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          theme,
+                          style: const TextStyle(
+                              color: Sanctuary.muted, fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right,
+                  size: 22, color: Sanctuary.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Quick-glance counts so the home screen acts like a real dashboard
+/// instead of just a launcher.
+class _DashboardStats extends ConsumerWidget {
+  const _DashboardStats();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final songsCount = ref.watch(songsStreamProvider).value?.length;
+    final setlistsCount =
+        ref.watch(upcomingSetlistsStreamProvider).value?.length;
+    final openPrayers = ref
+        .watch(prayerRequestsStreamProvider)
+        .value
+        ?.where((PrayerRequestRow p) => !p.isAnswered)
+        .length;
+    final pinned = ref
+        .watch(announcementsStreamProvider)
+        .value
+        ?.where((AnnouncementRow a) => a.pinned)
+        .length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _StatChip(
+            label: 'Songs',
+            value: songsCount?.toString() ?? '—',
+            icon: Icons.library_music_outlined,
+            accent: Sanctuary.auroraViolet,
+            path: '/songs',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatChip(
+            label: 'Upcoming',
+            value: setlistsCount?.toString() ?? '—',
+            icon: Icons.queue_music_outlined,
+            accent: Sanctuary.auroraCyan,
+            path: '/setlists',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatChip(
+            label: 'Prayers',
+            value: openPrayers?.toString() ?? '—',
+            icon: Icons.favorite_outline,
+            accent: openPrayers != null && openPrayers > 0
+                ? Sanctuary.auroraMagenta
+                : Sanctuary.auroraViolet,
+            path: '/prayer',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _StatChip(
+            label: 'Pinned',
+            value: pinned?.toString() ?? '—',
+            icon: Icons.push_pin_outlined,
+            accent: Sanctuary.auroraAmber,
+            path: '/announcements',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+    required this.path,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color accent;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+        onTap: () => context.push(path),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: Sanctuary.glass1,
+            border: Border.all(color: accent.withValues(alpha: 0.22)),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: accent, size: 16),
+              const SizedBox(height: 6),
+              Text(
+                value,
+                style: Sanctuary.display(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                label,
+                style: Sanctuary.mono(
+                  fontSize: 9,
+                  color: Sanctuary.muted,
+                ),
               ),
             ],
           ),
