@@ -26,7 +26,10 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(currentProfileProvider).value;
     final name = (profile?.displayName ?? '').trim();
-    final email = currentUser?.email ?? '';
+    // Offline mode has no live Supabase session, so currentUser.email is
+    // null. The activeEmailProvider falls back to the email we stashed on
+    // the last successful sign-in.
+    final email = currentUser?.email ?? ref.watch(activeEmailProvider).value ?? '';
     final greetTarget = name.isNotEmpty
         ? name
         : email.isNotEmpty
@@ -302,7 +305,11 @@ class _BiometricToggleState extends ConsumerState<_BiometricToggle> {
         reason: 'Verify to enable fingerprint sign-in',
       );
       if (!authed) return;
-      await svc.enrollWithCredentials(email: email, password: password);
+      await svc.enrollWithCredentials(
+        email: email,
+        password: password,
+        userId: supabase.auth.currentUser?.id,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

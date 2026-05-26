@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show AuthException, AuthRetryableFetchException;
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
@@ -21,14 +24,22 @@ const _kSignInTimeout = Duration(seconds: 10);
 /// (vs. a real auth rejection). Used to decide whether to fall back to the
 /// stored-credentials offline path.
 bool _isNetworkError(Object e) {
-  final s = e.toString().toLowerCase();
-  return s.contains('failed host lookup') ||
+  // supabase_flutter v2 throws this for any network-layer failure. Catch
+  // it by type so we don't depend on the message text.
+  if (e is AuthRetryableFetchException) return true;
+  if (e is TimeoutException) return true;
+  bool looksNetwork(String s) =>
+      s.contains('failed host lookup') ||
       s.contains('network is unreachable') ||
       s.contains('socketexception') ||
       s.contains('connection refused') ||
       s.contains('connection closed') ||
+      s.contains('connection reset') ||
       s.contains('timeoutexception') ||
-      s.contains('clientexception');
+      s.contains('clientexception') ||
+      s.contains('handshakeexception');
+  if (e is AuthException && looksNetwork(e.message.toLowerCase())) return true;
+  return looksNetwork(e.toString().toLowerCase());
 }
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -83,12 +94,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _probeBiometric() async {
+    // SharedPreferences resolves asynchronously. If we read the service
+    // before it's ready, we get null — and on cold start that lands us in
+    // a state where the biometric button never appears. Wait for prefs
+    // first so the provider has a real BiometricService to hand back.
+    await ref.read(sharedPrefsProvider.future);
+    if (!mounted) return;
     final svc = ref.read(biometricServiceProvider);
-    final can = await svc?.canCheckBiometrics() ?? false;
-    final hasCreds = await svc?.hasStoredCredentials() ?? false;
+    if (svc == null) return;
+    final can = await svc.canCheckBiometrics();
+    final hasCreds = await svc.hasStoredCredentials();
     // Clean up a stale "enabled" flag from older versions where we set
     // the flag without actually saving credentials.
-    if (svc != null && svc.isEnabled && !hasCreds) {
+    if (svc.isEnabled && !hasCreds) {
       await svc.disable();
     }
     if (mounted) {
@@ -96,6 +114,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _canCheckBiometrics = can;
         _hasStoredCredentials = hasCreds;
       });
+    }
+  }
+
+  /// Best-effort current connectivity: prefer the cached stream value, fall
+  /// back to a direct probe (the stream's first emit may not have landed yet
+  /// on cold start). Returns null only if both paths failed.
+  Future<List<ConnectivityResult>?> _currentConnectivity() async {
+    final cached = ref.read(connectivityProvider).value;
+    if (cached != null) return cached;
+    try {
+      return await Connectivity().checkConnectivity();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -112,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     });
 
     final svc = ref.read(biometricServiceProvider);
-    final connectivity = ref.read(connectivityProvider).value;
+    final connectivity = await _currentConnectivity();
     final knownOffline = connectivity != null && !isOnline(connectivity);
 
     // Fast path: connectivity says we're offline. Skip the network call
@@ -139,7 +170,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await _persistRememberMe(email);
       if (svc != null) {
         if (_rememberMe) {
-          await svc.rememberCredentials(email: email, password: password);
+          await svc.rememberCredentials(
+            email: email,
+            password: password,
+            userId: supabase.auth.currentUser?.id,
+          );
         } else {
           // User opted out — forget any stored creds and disable biometric
           // (biometric can't sign in without the password).
@@ -210,6 +245,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       return;
     }
+    // Fast path: if we know we're offline, skip the network call entirely.
+    // The biometric prompt has already proved who the user is.
+    final connectivity = await _currentConnectivity();
+    if (connectivity != null && !isOnline(connectivity)) {
+      ref.read(offlineModeProvider.notifier).state = true;
+      if (mounted) {
+        setState(() => _busy = false);
+        context.go('/');
+      }
+      return;
+    }
     try {
       await supabase.auth
           .signInWithPassword(
@@ -274,7 +320,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (shouldEnable != true) return;
     final authed = await svc.authenticate(reason: 'Verify to enable biometrics');
     if (authed) {
-      await svc.enrollWithCredentials(email: email, password: password);
+      await svc.enrollWithCredentials(
+        email: email,
+        password: password,
+        userId: supabase.auth.currentUser?.id,
+      );
       if (mounted) setState(() => _hasStoredCredentials = true);
     }
   }

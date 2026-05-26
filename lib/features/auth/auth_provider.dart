@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/supabase_client.dart';
 import '../../data/db/app_db.dart';
 import '../../data/sync/sync_service.dart';
+import 'biometric_service.dart';
 
 /// Stream of auth state changes — emits whenever the user signs in / out.
 final authStateProvider = StreamProvider<AuthState>((ref) {
@@ -36,21 +37,32 @@ final effectiveSignedInProvider = Provider<bool>((ref) {
 
 /// The email used for the active session, falling back to the offline
 /// credentials when in offline mode.
-final activeEmailProvider = Provider<String?>((ref) {
+final activeEmailProvider = FutureProvider<String?>((ref) async {
   final session = ref.watch(sessionProvider);
   if (session?.user.email != null) return session!.user.email;
-  // In offline mode the email is read from secure storage by the screens that
-  // need it (BiometricService.readCredentials); we don't expose it here so
-  // we don't have to bind the provider to async storage.
-  return null;
+  // Offline: read the email we cached on the last successful sign-in.
+  ref.watch(offlineModeProvider);
+  final svc = ref.watch(biometricServiceProvider);
+  if (svc == null) return null;
+  final creds = await svc.readCredentials();
+  return creds?.email;
 });
 
 /// Looks up the signed-in user's profile (display name + role) from the
 /// local Drift cache. Used to gate leader-only UI (compose buttons, edit
 /// actions). Returns null if no session or no profile row yet synced.
+///
+/// Offline path: when there's no live Supabase session, we fall back to the
+/// user id stashed in secure storage on the last successful sign-in so the
+/// leader UI keeps working and the home screen can greet the user by name.
 final currentProfileProvider = FutureProvider<ProfileRow?>((ref) async {
   ref.watch(authStateProvider); // re-fire on sign-out
-  final id = supabase.auth.currentUser?.id;
+  ref.watch(offlineModeProvider); // re-fire on offline-mode toggle
+  String? id = supabase.auth.currentUser?.id;
+  if (id == null) {
+    final svc = ref.watch(biometricServiceProvider);
+    id = await svc?.readUserId();
+  }
   if (id == null) return null;
   final db = ref.watch(appDbProvider);
   return db.getProfile(id);

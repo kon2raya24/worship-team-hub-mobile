@@ -5,9 +5,18 @@ import 'sync_service.dart';
 
 /// Streams the device's current connectivity. A non-empty list of results
 /// without [ConnectivityResult.none] means we're online.
-final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) {
+///
+/// `onConnectivityChanged` only emits when state *changes*, so we seed the
+/// stream with `checkConnectivity()` first. Without this the stream is
+/// pending on cold start and consumers can't tell online from offline.
+final connectivityProvider = StreamProvider<List<ConnectivityResult>>((ref) async* {
   final c = Connectivity();
-  return c.onConnectivityChanged;
+  try {
+    yield await c.checkConnectivity();
+  } catch (_) {
+    // If the initial probe fails, fall through to the change stream.
+  }
+  yield* c.onConnectivityChanged;
 });
 
 bool isOnline(List<ConnectivityResult> results) {

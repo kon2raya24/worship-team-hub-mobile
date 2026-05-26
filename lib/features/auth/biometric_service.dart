@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const _kBiometricEnabledKey = 'biometric_enabled';
 const _kEmailKey = 'biometric_email';
 const _kPasswordKey = 'biometric_password';
+const _kUserIdKey = 'biometric_user_id';
 
 const _secureOpts = AndroidOptions(encryptedSharedPreferences: true);
 
@@ -81,8 +82,13 @@ class BiometricService {
   Future<void> enrollWithCredentials({
     required String email,
     required String password,
+    String? userId,
   }) async {
-    await rememberCredentials(email: email, password: password);
+    await rememberCredentials(
+      email: email,
+      password: password,
+      userId: userId,
+    );
     await _prefs.setBool(_kBiometricEnabledKey, true);
   }
 
@@ -90,9 +96,14 @@ class BiometricService {
   /// the "Remember me" path so the same account can sign in offline by typing
   /// the password — even on devices without (or that haven't opted in to)
   /// biometric.
+  ///
+  /// [userId] is the Supabase auth.users id; storing it lets the home screen
+  /// look up the user's profile (display name, role) from the local Drift
+  /// cache when we're offline and `supabase.auth.currentUser` is null.
   Future<void> rememberCredentials({
     required String email,
     required String password,
+    String? userId,
   }) async {
     await _storage.write(key: _kEmailKey, value: email, aOptions: _secureOpts);
     await _storage.write(
@@ -100,7 +111,18 @@ class BiometricService {
       value: password,
       aOptions: _secureOpts,
     );
+    if (userId != null) {
+      await _storage.write(
+        key: _kUserIdKey,
+        value: userId,
+        aOptions: _secureOpts,
+      );
+    }
   }
+
+  /// Read the user id stashed alongside the credentials, if any.
+  Future<String?> readUserId() =>
+      _storage.read(key: _kUserIdKey, aOptions: _secureOpts);
 
   /// Compare typed credentials against the last successfully signed-in pair.
   /// Used as the offline-password fallback when the network is unreachable.
@@ -129,6 +151,7 @@ class BiometricService {
   Future<void> disable() async {
     await _storage.delete(key: _kEmailKey, aOptions: _secureOpts);
     await _storage.delete(key: _kPasswordKey, aOptions: _secureOpts);
+    await _storage.delete(key: _kUserIdKey, aOptions: _secureOpts);
     await _prefs.setBool(_kBiometricEnabledKey, false);
   }
 }
