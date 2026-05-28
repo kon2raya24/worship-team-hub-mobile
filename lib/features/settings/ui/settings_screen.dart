@@ -9,7 +9,6 @@ import '../../../core/update_checker.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/ui/biometric_toggle.dart';
-import '../../auth/ui/two_factor_section.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -180,8 +179,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Text('SECURITY', style: Sanctuary.mono(fontSize: 10)),
             const SizedBox(height: 8),
             const BiometricToggle(),
-            const SizedBox(height: 12),
-            const TwoFactorSection(),
             const SizedBox(height: 12),
             const Text(
               'Password and email changes happen on the web app for now.',

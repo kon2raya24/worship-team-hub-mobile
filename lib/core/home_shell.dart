@@ -156,13 +156,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
               labelBehavior:
                   NavigationDestinationLabelBehavior.alwaysShow,
               onDestinationSelected: (i) {
-                // Tapping the active tab pops to the branch's root — like
-                // iOS / Android system pattern. Otherwise switch branches
-                // while preserving each branch's nav stack.
-                widget.navShell.goBranch(
-                  i,
-                  initialLocation: i == widget.navShell.currentIndex,
-                );
+                // Always land on the tab's root (its menu/list), not the last
+                // page viewed in that branch — initialLocation: true resets it.
+                widget.navShell.goBranch(i, initialLocation: true);
               },
               destinations: _items
                   .map(
