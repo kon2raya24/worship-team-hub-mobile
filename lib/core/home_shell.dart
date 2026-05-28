@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 
 import '../data/sync/connectivity.dart';
 import '../data/sync/sync_service.dart';
+import 'push_service.dart';
+import 'supabase_client.dart';
 import 'theme.dart';
 
 /// Wraps every primary route with a persistent bottom navigation bar.
@@ -41,6 +43,12 @@ class _HomeShellState extends ConsumerState<HomeShell>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _startPolling();
+    _registerPush();
+  }
+
+  void _registerPush() {
+    final user = supabase.auth.currentUser;
+    if (user != null) unawaited(PushService.registerForUser(user.id));
   }
 
   @override

@@ -1,7 +1,7 @@
 name: worship_team_hub
 description: "Worship Team Hub — chord charts, setlists, and team coordination. Offline-first."
 publish_to: 'none'
-version: 0.1.8+9
+version: 0.1.9+10
 
 environment:
   sdk: ^3.9.2
@@ -13,6 +13,10 @@ dependencies:
 
   # Backend
   supabase_flutter: ^2.8.0
+
+  # Push notifications (Firebase Cloud Messaging)
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
 
   # Local DB (offline-first)
   drift: ^2.20.0
