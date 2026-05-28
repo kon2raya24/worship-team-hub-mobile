@@ -1,7 +1,7 @@
 name: worship_team_hub
 description: "Worship Team Hub — chord charts, setlists, and team coordination. Offline-first."
 publish_to: 'none'
-version: 0.1.6+7
+version: 0.1.7+8
 
 environment:
   sdk: ^3.9.2
