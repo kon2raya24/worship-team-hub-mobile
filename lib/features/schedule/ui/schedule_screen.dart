@@ -209,6 +209,10 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                               size: 16, color: Sanctuary.muted),
                           tooltip: 'Remove',
                           onPressed: () => _remove(a),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                              minWidth: 32, minHeight: 32),
                         ),
                     ],
                   ),
