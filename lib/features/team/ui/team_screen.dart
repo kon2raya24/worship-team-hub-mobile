@@ -167,7 +167,9 @@ class _MemberCard extends ConsumerWidget {
                             BorderRadius.circular(Sanctuary.radiusSm),
                       ),
                       child: Text(
-                        p.role.toUpperCase(),
+                        // Mask the permission role: DB stores leader/member,
+                        // but we surface "Editor"/"Member" like the web app.
+                        isLeaderRole ? 'EDITOR' : 'MEMBER',
                         style: Sanctuary.mono(
                           fontSize: 9,
                           color: isLeaderRole
@@ -208,7 +210,7 @@ class _MemberCard extends ConsumerWidget {
                         ? Icons.person_outline
                         : Icons.shield_outlined),
                     const SizedBox(width: 8),
-                    Text(isLeaderRole ? 'Make member' : 'Make leader'),
+                    Text(isLeaderRole ? 'Make member' : 'Make editor'),
                   ]),
                 ),
               ],
