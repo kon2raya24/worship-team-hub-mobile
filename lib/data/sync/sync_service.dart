@@ -72,7 +72,7 @@ class SyncService {
         updatedAt: DateTime.parse(m['updated_at'] as String),
       );
     }).toList();
-    await _db.upsertSongs(companions);
+    await _db.replaceSongs(companions);
   }
 
   Future<void> _syncSetlistsAndJoins() async {
@@ -114,7 +114,7 @@ class SyncService {
       }).toList();
     }
 
-    await _db.upsertSetlists(setlistCompanions);
+    await _db.replaceSetlists(setlistCompanions);
     for (final entry in perSetlistSongs.entries) {
       await _db.replaceSetlistSongs(entry.key, entry.value);
     }
@@ -143,7 +143,7 @@ class SyncService {
         role: Value((m['role'] as String?) ?? 'member'),
       );
     }).toList();
-    await _db.upsertProfiles(profileRows);
+    await _db.replaceProfiles(profileRows);
 
     final assignmentRows = (results[1] as List).map((r) {
       final m = r as Map<String, dynamic>;

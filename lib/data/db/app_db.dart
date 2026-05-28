@@ -168,12 +168,13 @@ class AppDb extends _$AppDb {
   Future<SongRow?> getSong(String id) =>
       (select(songs)..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsertSongs(List<SongsCompanion> rows) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(songs, row, mode: InsertMode.insertOrReplace);
-      }
+  // Replace, not upsert, so songs deleted on the server are removed locally.
+  // _syncSongs pulls the full library, so the pulled set is authoritative.
+  Future<void> replaceSongs(List<SongsCompanion> rows) async {
+    await transaction(() async {
+      await delete(songs).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(songs, rows));
     });
   }
 
@@ -187,12 +188,13 @@ class AppDb extends _$AppDb {
         .watch();
   }
 
-  Future<void> upsertSetlists(List<SetlistsCompanion> rows) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(setlists, row, mode: InsertMode.insertOrReplace);
-      }
+  // Replace the upcoming-setlist set so deleted (and now-past) setlists drop
+  // out. Per-setlist songs are reconciled separately by replaceSetlistSongs.
+  Future<void> replaceSetlists(List<SetlistsCompanion> rows) async {
+    await transaction(() async {
+      await delete(setlists).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(setlists, rows));
     });
   }
 
@@ -224,12 +226,11 @@ class AppDb extends _$AppDb {
   Future<ProfileRow?> getProfile(String id) =>
       (select(profiles)..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsertProfiles(List<ProfilesCompanion> rows) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(profiles, row, mode: InsertMode.insertOrReplace);
-      }
+  Future<void> replaceProfiles(List<ProfilesCompanion> rows) async {
+    await transaction(() async {
+      await delete(profiles).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(profiles, rows));
     });
   }
 
