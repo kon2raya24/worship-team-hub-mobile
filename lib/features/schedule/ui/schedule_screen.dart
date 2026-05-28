@@ -171,7 +171,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
             )
           else
             ...widget.assignments.map((a) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: const EdgeInsets.symmetric(vertical: 1),
                   child: Row(
                     children: [
                       Container(
@@ -212,7 +212,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
-                              minWidth: 32, minHeight: 32),
+                              minWidth: 28, minHeight: 28),
                         ),
                     ],
                   ),
