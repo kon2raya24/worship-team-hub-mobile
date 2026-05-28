@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -187,12 +192,186 @@ class UpdateChecker {
     }
     if (action != _UpdateAction.update) return;
 
-    // Prefer the direct APK URL when present — saves the user a tap on
-    // the release page. Falls back to the release page if no APK asset.
-    final target = release.apkUrl ?? release.releasePageUrl;
-    if (target == null) return;
-    final uri = Uri.parse(target);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Direct APK asset → download in-app (progress bar) and hand off to the
+    // system installer. No APK asset (shouldn't happen for our releases) →
+    // fall back to opening the release page in the browser.
+    final apkUrl = release.apkUrl;
+    if (apkUrl == null) {
+      final page = release.releasePageUrl;
+      if (page != null) {
+        await launchUrl(Uri.parse(page), mode: LaunchMode.externalApplication);
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _DownloadInstallDialog(url: apkUrl, tag: release.tag),
+    );
+  }
+}
+
+/// Downloads the release APK in-app with a progress bar, then launches the
+/// system installer via open_filex. Mirrors the AAI scanner OTA pattern
+/// (dio.download → OpenFilex.open, gated by REQUEST_INSTALL_PACKAGES). The
+/// OS still shows its own install confirmation — only device-owner apps can
+/// install silently — but there's no browser bounce.
+class _DownloadInstallDialog extends StatefulWidget {
+  const _DownloadInstallDialog({required this.url, required this.tag});
+
+  final String url;
+  final String tag;
+
+  @override
+  State<_DownloadInstallDialog> createState() => _DownloadInstallDialogState();
+}
+
+class _DownloadInstallDialogState extends State<_DownloadInstallDialog> {
+  final Dio _dio = Dio();
+  CancelToken? _cancel;
+  double _progress = 0;
+  String _status = 'Preparing…';
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _start();
+  }
+
+  @override
+  void dispose() {
+    _cancel?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _start() async {
+    if (mounted) {
+      setState(() {
+        _error = null;
+        _progress = 0;
+        _status = 'Preparing…';
+      });
+    }
+    try {
+      // Only ever pull the APK over TLS.
+      if (!widget.url.startsWith('https://')) {
+        throw 'Refusing a non-https download.';
+      }
+      if (Platform.isAndroid) {
+        final status = await Permission.requestInstallPackages.request();
+        if (!status.isGranted) {
+          throw 'Install permission denied. Enable "Install unknown apps" '
+              'for Worship Hub, then retry.';
+        }
+      }
+
+      final dir = await getExternalStorageDirectory();
+      if (dir == null) throw 'No storage available for the download.';
+      final path = '${dir.path}/worship-hub-update.apk';
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+
+      _cancel = CancelToken();
+      await _dio.download(
+        widget.url,
+        path,
+        cancelToken: _cancel,
+        onReceiveProgress: (received, total) {
+          if (!mounted || total <= 0) return;
+          setState(() {
+            _progress = received / total;
+            final mb = (received / 1048576).toStringAsFixed(1);
+            final totalMb = (total / 1048576).toStringAsFixed(1);
+            _status =
+                'Downloading ${(_progress * 100).toStringAsFixed(0)}% · '
+                '$mb / $totalMb MB';
+          });
+        },
+      );
+
+      final result = await OpenFilex.open(path);
+      if (result.type != ResultType.done) {
+        throw 'Could not open the installer: ${result.message}';
+      }
+      // Installer is up; dismiss our dialog.
+      if (mounted) Navigator.of(context).pop();
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel) return; // user cancelled
+      if (mounted) {
+        setState(() => _error = 'Download failed — check your connection.');
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = '$e');
+    }
+  }
+
+  Future<void> _openInBrowser() async {
+    await launchUrl(Uri.parse(widget.url),
+        mode: LaunchMode.externalApplication);
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final downloading = _error == null;
+    return PopScope(
+      canPop: !downloading, // don't allow dismiss mid-download
+      child: AlertDialog(
+        backgroundColor: Sanctuary.ink2,
+        title: Text('Updating · ${widget.tag}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (downloading) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _progress == 0 ? null : _progress,
+                  minHeight: 6,
+                  backgroundColor: Sanctuary.hairline,
+                  color: Sanctuary.auroraCyan,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(_status,
+                  style: const TextStyle(
+                      color: Sanctuary.muted, fontSize: 12)),
+            ] else
+              Text(_error!,
+                  style: const TextStyle(
+                      color: Sanctuary.destructive, fontSize: 13)),
+          ],
+        ),
+        actions: downloading
+            ? [
+                TextButton(
+                  onPressed: () {
+                    _cancel?.cancel();
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ]
+            : [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close'),
+                ),
+                TextButton(
+                  onPressed: _openInBrowser,
+                  child: const Text('Open in browser'),
+                ),
+                FilledButton(
+                  onPressed: _start,
+                  child: const Text('Retry'),
+                ),
+              ],
+      ),
+    );
   }
 }
 

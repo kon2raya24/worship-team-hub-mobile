@@ -1,7 +1,7 @@
 name: worship_team_hub
 description: "Worship Team Hub — chord charts, setlists, and team coordination. Offline-first."
 publish_to: 'none'
-version: 0.1.3+4
+version: 0.1.4+5
 
 environment:
   sdk: ^3.9.2
@@ -52,10 +52,14 @@ dependencies:
   local_auth_android: ^1.0.46
   flutter_secure_storage: ^9.2.2
 
-  # OTA update checker (polls GitHub Releases API, opens release page in
-  # the browser when a newer tag exists — no in-app install machinery).
+  # OTA update checker (polls GitHub Releases API; downloads the APK in-app
+  # with a progress bar via dio, then hands off to the system installer via
+  # open_filex — requestInstallPackages gates the install on Android 8+).
   http: ^1.2.2
   package_info_plus: ^8.0.2
+  dio: ^5.7.0
+  open_filex: ^4.5.0
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
