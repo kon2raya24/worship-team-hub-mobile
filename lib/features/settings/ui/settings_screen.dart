@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/update_checker.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
 import '../../auth/ui/biometric_toggle.dart';
@@ -20,6 +22,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   final _instruments = TextEditingController();
   bool _busy = false;
   bool _hydrated = false;
+  bool _checkingUpdate = false;
+  String? _version;
   String? _info;
   String? _error;
 
@@ -31,11 +35,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Future<void> _hydrate() async {
     final p = await ref.read(currentProfileProvider.future);
+    final info = await PackageInfo.fromPlatform();
     if (!mounted) return;
     if (p != null) {
       _name.text = p.displayName;
     }
-    setState(() => _hydrated = true);
+    setState(() {
+      _version = info.version;
+      _hydrated = true;
+    });
+  }
+
+  Future<void> _checkForUpdates() async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _checkingUpdate = true);
+    final outcome = await UpdateChecker.checkNow(context);
+    if (!mounted) return;
+    setState(() => _checkingUpdate = false);
+    final msg = switch (outcome) {
+      UpdateCheckOutcome.updateAvailable => null, // dialog already shown
+      UpdateCheckOutcome.upToDate => "You're on the latest version.",
+      UpdateCheckOutcome.failed =>
+        'Could not check for updates. Try again later.',
+    };
+    if (msg != null) {
+      messenger.showSnackBar(SnackBar(content: Text(msg)));
+    }
   }
 
   @override
@@ -158,6 +183,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Text(
               'Password and email changes happen on the web app for now.',
               style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 16),
+            Text('UPDATES', style: Sanctuary.mono(fontSize: 10)),
+            const SizedBox(height: 8),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.system_update,
+                          size: 18, color: Sanctuary.muted),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _version == null
+                              ? 'Worship Hub'
+                              : 'Worship Hub · v$_version',
+                          style: const TextStyle(
+                              color: Sanctuary.foreground, fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton(
+                    onPressed: _checkingUpdate ? null : _checkForUpdates,
+                    child: _checkingUpdate
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Check for updates'),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

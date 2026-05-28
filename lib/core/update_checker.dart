@@ -67,6 +67,29 @@ class UpdateChecker {
     await _promptUpdate(context, release);
   }
 
+  /// User-initiated check (Settings → "Check for updates"). Unlike
+  /// [checkOnLaunch] this ignores the 12h throttle and any previously
+  /// skipped tag, and returns an [UpdateCheckOutcome] so the caller can
+  /// tell the user "you're up to date" or "couldn't check".
+  static Future<UpdateCheckOutcome> checkNow(BuildContext context) async {
+    final release = await _fetchLatestRelease();
+    if (release == null) return UpdateCheckOutcome.failed;
+
+    // Count this as a check so the next launch poll respects the throttle.
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kLastCheck, DateTime.now().millisecondsSinceEpoch);
+
+    final current = await PackageInfo.fromPlatform();
+    final currentV = _Version.tryParse(current.version);
+    final latestV = _Version.tryParse(release.tag);
+    if (currentV == null || latestV == null) return UpdateCheckOutcome.failed;
+    if (!latestV.isNewerThan(currentV)) return UpdateCheckOutcome.upToDate;
+
+    if (!context.mounted) return UpdateCheckOutcome.updateAvailable;
+    await _promptUpdate(context, release);
+    return UpdateCheckOutcome.updateAvailable;
+  }
+
   static Future<_LatestRelease?> _fetchLatestRelease() async {
     try {
       final res = await http
@@ -174,6 +197,9 @@ class UpdateChecker {
 }
 
 enum _UpdateAction { update, later, skip }
+
+/// Result of a user-initiated [UpdateChecker.checkNow].
+enum UpdateCheckOutcome { updateAvailable, upToDate, failed }
 
 class _LatestRelease {
   _LatestRelease({
