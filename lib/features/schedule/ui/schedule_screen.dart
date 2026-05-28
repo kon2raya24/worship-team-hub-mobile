@@ -10,14 +10,16 @@ import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
 
 const _roles = [
-  'lead_vocal',
-  'vocals',
-  'acoustic',
-  'electric',
-  'bass',
-  'keys',
-  'drums',
-  'tech',
+  'Worship Leader',
+  'Lead Vocals',
+  'Backing Vocals',
+  'Acoustic Guitar',
+  'Electric Guitar',
+  'Bass Guitar',
+  'Keys',
+  'Drums',
+  'Sound / Tech',
+  'Media / Slides',
 ];
 
 class ScheduleScreen extends ConsumerWidget {
