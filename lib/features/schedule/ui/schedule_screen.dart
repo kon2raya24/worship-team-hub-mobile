@@ -58,9 +58,9 @@ class ScheduleScreen extends ConsumerWidget {
             color: Sanctuary.auroraCyan,
             onRefresh: () => ref.read(syncServiceProvider).syncAll(),
             child: ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(10),
               itemCount: dates.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (_, i) => _ScheduleCard(
                 date: dates[i],
                 assignments: byDate[dates[i]] ?? [],
@@ -146,7 +146,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
     final accent =
         widget.isFirst ? Sanctuary.auroraCyan : Sanctuary.auroraViolet;
     return GlassCard(
-      padding: const EdgeInsets.all(13),
+      padding: const EdgeInsets.all(11),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -162,8 +162,8 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
           ),
           const SizedBox(height: 3),
           Text(DateFormat('EEEE, MMM d').format(widget.date),
-              style: Sanctuary.display(fontSize: 18)),
-          const SizedBox(height: 8),
+              style: Sanctuary.display(fontSize: 17)),
+          const SizedBox(height: 6),
           if (widget.assignments.isEmpty)
             const Text(
               'No assignments yet.',
@@ -214,7 +214,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                   ),
                 )),
           if (widget.isLeader) ...[
-            const Divider(color: Sanctuary.hairline, height: 16),
+            const Divider(color: Sanctuary.hairline, height: 12),
             _AssignForm(
               picked: _picked,
               role: _role,
@@ -312,13 +312,13 @@ class _AssignForm extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           FilledButton.icon(
             onPressed: picked == null || busy ? null : onAdd,
             style: FilledButton.styleFrom(
               backgroundColor: Sanctuary.auroraCyan,
               foregroundColor: Sanctuary.ink0,
-              minimumSize: const Size(0, 44),
+              minimumSize: const Size(0, 40),
             ),
             icon: busy
                 ? const SizedBox(
