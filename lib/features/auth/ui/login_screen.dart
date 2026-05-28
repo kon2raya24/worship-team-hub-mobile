@@ -6,7 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'
-    show AuthException, AuthRetryableFetchException;
+    show
+        AuthException,
+        AuthRetryableFetchException,
+        AuthenticatorAssuranceLevels,
+        FactorStatus;
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
@@ -182,6 +186,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           if (mounted) setState(() => _hasStoredCredentials = false);
         }
       }
+      // If the account has a verified second factor, hold for the code step —
+      // the router redirects to /mfa while mfaPendingProvider is true.
+      // listFactors() (network) is the reliable source of truth; the synchronous
+      // AAL getter tells us the session is still at aal1.
+      final factors = await supabase.auth.mfa.listFactors();
+      final hasVerifiedFactor =
+          factors.totp.any((f) => f.status == FactorStatus.verified);
+      final aal = supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (hasVerifiedFactor &&
+          aal.currentLevel == AuthenticatorAssuranceLevels.aal1) {
+        ref.read(mfaPendingProvider.notifier).state = true;
+        return;
+      }
+      ref.read(mfaPendingProvider.notifier).state = false;
       if (!mounted) return;
       await _offerBiometricEnrollment(email, password);
     } catch (e) {

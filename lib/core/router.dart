@@ -6,6 +6,7 @@ import '../features/auth/auth_provider.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/auth/ui/signup_screen.dart';
 import '../features/auth/ui/forgot_password_screen.dart';
+import '../features/auth/ui/mfa_challenge_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import '../features/more/ui/more_screen.dart';
 import '../features/songs/ui/songs_list_screen.dart';
@@ -47,6 +48,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authSub =
       supabase.auth.onAuthStateChange.listen((_) => refresh.bump());
   ref.listen<bool>(effectiveSignedInProvider, (_, __) => refresh.bump());
+  ref.listen<bool>(mfaPendingProvider, (_, __) => refresh.bump());
   ref.onDispose(() {
     authSub.cancel();
     refresh.dispose();
@@ -63,7 +65,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!signedIn) {
         return unauthOk.contains(loc) ? null : '/login';
       }
-      if (loc == '/login') return '/';
+      // Second factor still owed → hold the user on /mfa until they verify.
+      if (ref.read(mfaPendingProvider)) {
+        return loc == '/mfa' ? null : '/mfa';
+      }
+      if (loc == '/mfa' || loc == '/login') return '/';
       return null;
     },
     routes: [
@@ -74,6 +80,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/forgot-password',
         builder: (_, __) => const ForgotPasswordScreen(),
       ),
+      GoRoute(path: '/mfa', builder: (_, __) => const MfaChallengeScreen()),
 
       // Everything else runs inside the bottom-nav shell. Each branch keeps
       // its own nav stack so e.g. opening a song detail then tapping the

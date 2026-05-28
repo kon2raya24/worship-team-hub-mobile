@@ -35,6 +35,14 @@ final effectiveSignedInProvider = Provider<bool>((ref) {
   return ref.watch(offlineModeProvider);
 });
 
+/// True when the signed-in session still owes its second factor: the account
+/// has a verified TOTP factor but the session is only AAL1. The router holds
+/// the user on /mfa until they enter a code. Set by the login flow after an
+/// online password sign-in; cleared by the MFA screen on success / sign-out.
+/// (Offline + biometric sign-in skip this — there's no network to verify a
+/// TOTP code, and the device biometric already gates that path.)
+final mfaPendingProvider = StateProvider<bool>((ref) => false);
+
 /// The email used for the active session, falling back to the offline
 /// credentials when in offline mode.
 final activeEmailProvider = FutureProvider<String?>((ref) async {
