@@ -68,7 +68,28 @@ final currentProfileProvider = FutureProvider<ProfileRow?>((ref) async {
   return db.getProfile(id);
 });
 
-final isLeaderProvider = Provider<bool>((ref) {
-  final p = ref.watch(currentProfileProvider).value;
-  return p?.role == 'leader';
-});
+/// Leader gate for add/edit UI. Derived from [currentProfileProvider] but
+/// deliberately "sticky": it only changes when the profile *resolves* to a
+/// value. While the profile is momentarily reloading — Supabase fires
+/// onAuthStateChange on every token refresh / app resume, which re-runs
+/// currentProfileProvider — we keep the last known answer. Without this the
+/// leader-only buttons (add/edit) blink out during those transient reloads.
+final isLeaderProvider = NotifierProvider<IsLeaderNotifier, bool>(
+  IsLeaderNotifier.new,
+);
+
+class IsLeaderNotifier extends Notifier<bool> {
+  bool _last = false;
+
+  @override
+  bool build() {
+    final async = ref.watch(currentProfileProvider);
+    // hasValue is true for resolved data *and* for a reload that preserved
+    // the previous value; false for a first/empty load or a bare error — in
+    // which case we fall through and keep [_last].
+    if (async.hasValue) {
+      _last = async.value?.role == 'leader';
+    }
+    return _last;
+  }
+}
