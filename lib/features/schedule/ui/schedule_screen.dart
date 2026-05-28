@@ -257,66 +257,70 @@ class _AssignForm extends ConsumerWidget {
       ),
       error: (e, _) => Text('Members: $e',
           style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
-      data: (members) => Row(
+      data: (members) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: picked?.id,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                isDense: true,
-                hintText: 'Pick member',
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: picked?.id,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    hintText: 'Pick member',
+                  ),
+                  dropdownColor: Sanctuary.ink2,
+                  items: members
+                      .map((m) => DropdownMenuItem(
+                            value: m.id,
+                            child: Text(m.displayName,
+                                style: const TextStyle(
+                                    color: Sanctuary.foreground, fontSize: 13),
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (id) {
+                    final m = members.where((x) => x.id == id).firstOrNull;
+                    onMemberChanged(m);
+                  },
+                ),
               ),
-              dropdownColor: Sanctuary.ink2,
-              items: members
-                  .map((m) => DropdownMenuItem(
-                        value: m.id,
-                        child: Text(m.displayName,
-                            style: const TextStyle(
-                                color: Sanctuary.foreground, fontSize: 13),
-                            overflow: TextOverflow.ellipsis),
-                      ))
-                  .toList(),
-              onChanged: (id) {
-                final m = members.where((x) => x.id == id).firstOrNull;
-                onMemberChanged(m);
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: role,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                isDense: true,
+              const SizedBox(width: 8),
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: role,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    isDense: true,
+                  ),
+                  dropdownColor: Sanctuary.ink2,
+                  items: _roles
+                      .map((r) => DropdownMenuItem(
+                            value: r,
+                            child: Text(r,
+                                style: Sanctuary.mono(
+                                    fontSize: 12,
+                                    color: Sanctuary.foreground,
+                                    letterSpacing: 0)),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) onRoleChanged(v);
+                  },
+                ),
               ),
-              dropdownColor: Sanctuary.ink2,
-              items: _roles
-                  .map((r) => DropdownMenuItem(
-                        value: r,
-                        child: Text(r,
-                            style: Sanctuary.mono(
-                                fontSize: 12,
-                                color: Sanctuary.foreground,
-                                letterSpacing: 0)),
-                      ))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) onRoleChanged(v);
-              },
-            ),
+            ],
           ),
-          const SizedBox(width: 8),
-          FilledButton(
+          const SizedBox(height: 10),
+          FilledButton.icon(
             onPressed: picked == null || busy ? null : onAdd,
             style: FilledButton.styleFrom(
               backgroundColor: Sanctuary.auroraCyan,
               foregroundColor: Sanctuary.ink0,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size(0, 40),
+              minimumSize: const Size(0, 44),
             ),
-            child: busy
+            icon: busy
                 ? const SizedBox(
                     width: 14,
                     height: 14,
@@ -324,6 +328,7 @@ class _AssignForm extends ConsumerWidget {
                         strokeWidth: 2, color: Sanctuary.ink0),
                   )
                 : const Icon(Icons.add, size: 18),
+            label: Text(busy ? 'Adding…' : 'Add member'),
           ),
         ],
       ),
