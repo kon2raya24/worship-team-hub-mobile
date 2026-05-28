@@ -218,10 +218,15 @@ class _SignOutDialogState extends ConsumerState<_SignOutDialog> {
   Future<void> _confirm() async {
     if (_busy) return;
     setState(() => _busy = true);
+    final router = GoRouter.of(context);
     try {
-      // Clear offline-mode regardless so the next launch shows /login.
+      // Clear local flags, sign out, then navigate to /login EXPLICITLY —
+      // relying on the reactive redirect alone could leave the user on a blank
+      // aurora background if it doesn't re-fire.
       ref.read(offlineModeProvider.notifier).state = false;
+      ref.read(mfaPendingProvider.notifier).state = false;
       await supabase.auth.signOut();
+      router.go('/login');
       if (mounted) Navigator.of(context).pop();
     } catch (_) {
       if (mounted) {
