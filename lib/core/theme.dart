@@ -105,7 +105,7 @@ class Sanctuary {
           borderSide: BorderSide(color: auroraViolet.withValues(alpha: 0.55)),
         ),
         contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
       cardTheme: CardThemeData(
         color: glass1,
@@ -224,7 +224,7 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(20),
+    this.padding = const EdgeInsets.all(16),
   });
 
   final Widget child;

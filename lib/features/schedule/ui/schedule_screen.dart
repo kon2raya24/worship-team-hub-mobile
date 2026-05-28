@@ -60,7 +60,7 @@ class ScheduleScreen extends ConsumerWidget {
             child: ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: dates.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, __) => const SizedBox(height: 10),
               itemBuilder: (_, i) => _ScheduleCard(
                 date: dates[i],
                 assignments: byDate[dates[i]] ?? [],
@@ -146,7 +146,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
     final accent =
         widget.isFirst ? Sanctuary.auroraCyan : Sanctuary.auroraViolet;
     return GlassCard(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(13),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -160,10 +160,10 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                       color: Sanctuary.muted, fontSize: 11)),
             ],
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(DateFormat('EEEE, MMM d').format(widget.date),
               style: Sanctuary.display(fontSize: 18)),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           if (widget.assignments.isEmpty)
             const Text(
               'No assignments yet.',
@@ -171,7 +171,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
             )
           else
             ...widget.assignments.map((a) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
                       Container(
@@ -214,7 +214,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                   ),
                 )),
           if (widget.isLeader) ...[
-            const Divider(color: Sanctuary.hairline, height: 24),
+            const Divider(color: Sanctuary.hairline, height: 16),
             _AssignForm(
               picked: _picked,
               role: _role,
@@ -312,7 +312,7 @@ class _AssignForm extends ConsumerWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           FilledButton.icon(
             onPressed: picked == null || busy ? null : onAdd,
             style: FilledButton.styleFrom(
