@@ -59,14 +59,18 @@ class ScheduleScreen extends ConsumerWidget {
             onRefresh: () => ref.read(syncServiceProvider).syncAll(),
             child: ListView.separated(
               padding: const EdgeInsets.all(10),
-              itemCount: dates.length,
+              // One extra item for leaders: the custom-date assigner.
+              itemCount: dates.length + (isLeader ? 1 : 0),
               separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (_, i) => _ScheduleCard(
-                date: dates[i],
-                assignments: byDate[dates[i]] ?? [],
-                isFirst: i == 0,
-                isLeader: isLeader,
-              ),
+              itemBuilder: (_, i) {
+                if (i >= dates.length) return const _CustomDateCard();
+                return _ScheduleCard(
+                  date: dates[i],
+                  assignments: byDate[dates[i]] ?? [],
+                  isFirst: i == 0,
+                  isLeader: isLeader,
+                );
+              },
             ),
           );
         },
@@ -333,6 +337,179 @@ class _AssignForm extends ConsumerWidget {
                   )
                 : const Icon(Icons.add, size: 18),
             label: Text(busy ? 'Adding…' : 'Add member'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Leader-only assigner for an arbitrary date (mirrors the web "Custom date"
+/// section) — useful for special services that aren't one of the next four
+/// Sundays.
+class _CustomDateCard extends ConsumerStatefulWidget {
+  const _CustomDateCard();
+
+  @override
+  ConsumerState<_CustomDateCard> createState() => _CustomDateCardState();
+}
+
+class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
+  DateTime? _date;
+  ProfileRow? _picked;
+  String _role = _roles.first;
+  bool _busy = false;
+
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _date ?? now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 2),
+    );
+    if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _add() async {
+    final d = _date;
+    final p = _picked;
+    if (d == null || p == null || _busy) return;
+    setState(() => _busy = true);
+    final ok = await ref.read(syncServiceProvider).assignToSchedule(
+          serviceDate: d,
+          userId: p.id,
+          role: _role,
+        );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (ok) {
+      setState(() {
+        _picked = null;
+        _date = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Assignment added.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not assign — check connection.')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profiles = ref.watch(allProfilesProvider);
+    return GlassCard(
+      padding: const EdgeInsets.all(11),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('CUSTOM DATE',
+              style:
+                  Sanctuary.mono(fontSize: 10, color: Sanctuary.auroraViolet)),
+          const SizedBox(height: 8),
+          InkWell(
+            onTap: _pickDate,
+            borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+            child: InputDecorator(
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixIcon: Icon(Icons.calendar_today,
+                    size: 16, color: Sanctuary.muted),
+              ),
+              child: Text(
+                _date == null
+                    ? 'Pick a date'
+                    : DateFormat('EEE, MMM d, yyyy').format(_date!),
+                style: TextStyle(
+                  color:
+                      _date == null ? Sanctuary.muted : Sanctuary.foreground,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          profiles.when(
+            loading: () => const SizedBox(
+              height: 36,
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+            error: (e, _) => Text('Members: $e',
+                style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
+            data: (members) => Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _picked?.id,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      isDense: true,
+                      hintText: 'Pick member',
+                    ),
+                    dropdownColor: Sanctuary.ink2,
+                    items: members
+                        .map((m) => DropdownMenuItem(
+                              value: m.id,
+                              child: Text(m.displayName,
+                                  style: const TextStyle(
+                                      color: Sanctuary.foreground,
+                                      fontSize: 13),
+                                  overflow: TextOverflow.ellipsis),
+                            ))
+                        .toList(),
+                    onChanged: (id) {
+                      final m =
+                          members.where((x) => x.id == id).firstOrNull;
+                      setState(() => _picked = m);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _role,
+                    isExpanded: true,
+                    decoration: const InputDecoration(isDense: true),
+                    dropdownColor: Sanctuary.ink2,
+                    items: _roles
+                        .map((r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(r,
+                                  style: Sanctuary.mono(
+                                      fontSize: 12,
+                                      color: Sanctuary.foreground,
+                                      letterSpacing: 0)),
+                            ))
+                        .toList(),
+                    onChanged: (v) {
+                      if (v != null) setState(() => _role = v);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          FilledButton.icon(
+            onPressed:
+                (_date == null || _picked == null || _busy) ? null : _add,
+            style: FilledButton.styleFrom(
+              backgroundColor: Sanctuary.auroraViolet,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(0, 40),
+            ),
+            icon: _busy
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
+                  )
+                : const Icon(Icons.add, size: 18),
+            label: const Text('Add assignment'),
           ),
         ],
       ),
