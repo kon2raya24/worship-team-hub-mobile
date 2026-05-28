@@ -323,12 +323,13 @@ extension AppDbReads on AppDb {
   Future<DevotionRow?> getDevotion(String id) =>
       (select(devotions)..where((t) => t.id.equals(id))).getSingleOrNull();
 
-  Future<void> upsertDevotions(List<DevotionsCompanion> rows) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(devotions, row, mode: InsertMode.insertOrReplace);
-      }
+  // Replace the cached set (not upsert) so rows deleted on the server are
+  // removed locally instead of lingering forever.
+  Future<void> replaceDevotions(List<DevotionsCompanion> rows) async {
+    await transaction(() async {
+      await delete(devotions).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(devotions, rows));
     });
   }
 
@@ -337,14 +338,13 @@ extension AppDbReads on AppDb {
             ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
           .watch();
 
-  Future<void> upsertPrayerRequests(
+  Future<void> replacePrayerRequests(
     List<PrayerRequestsCompanion> rows,
   ) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(prayerRequests, row, mode: InsertMode.insertOrReplace);
-      }
+    await transaction(() async {
+      await delete(prayerRequests).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(prayerRequests, rows));
     });
   }
 
@@ -356,14 +356,13 @@ extension AppDbReads on AppDb {
             ]))
           .watch();
 
-  Future<void> upsertAnnouncements(
+  Future<void> replaceAnnouncements(
     List<AnnouncementsCompanion> rows,
   ) async {
-    if (rows.isEmpty) return;
-    await batch((b) {
-      for (final row in rows) {
-        b.insert(announcements, row, mode: InsertMode.insertOrReplace);
-      }
+    await transaction(() async {
+      await delete(announcements).go();
+      if (rows.isEmpty) return;
+      await batch((b) => b.insertAll(announcements, rows));
     });
   }
 }

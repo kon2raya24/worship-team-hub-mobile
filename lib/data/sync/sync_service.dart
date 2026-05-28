@@ -173,7 +173,7 @@ class SyncService {
         publishedAt: DateTime.parse(m['published_at'] as String),
       );
     }).toList();
-    await _db.upsertDevotions(companions);
+    await _db.replaceDevotions(companions);
   }
 
   Future<void> _syncPrayerRequests() async {
@@ -196,7 +196,7 @@ class SyncService {
         createdAt: DateTime.parse(m['created_at'] as String),
       );
     }).toList();
-    await _db.upsertPrayerRequests(companions);
+    await _db.replacePrayerRequests(companions);
   }
 
   Future<void> _syncAnnouncements() async {
@@ -215,7 +215,7 @@ class SyncService {
         createdAt: DateTime.parse(m['created_at'] as String),
       );
     }).toList();
-    await _db.upsertAnnouncements(companions);
+    await _db.replaceAnnouncements(companions);
   }
 
   /// Toggle "answered" on a prayer request. Author or leader per web RLS.
