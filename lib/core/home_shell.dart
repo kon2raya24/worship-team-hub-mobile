@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../data/sync/connectivity.dart';
 import '../data/sync/sync_service.dart';
+import '../features/auth/auth_provider.dart';
 import 'push_service.dart';
 import 'supabase_client.dart';
 import 'theme.dart';
@@ -82,7 +83,16 @@ class _HomeShellState extends ConsumerState<HomeShell>
     // still unknown, attempt the sync and let the network call fail fast.
     final conn = ref.read(connectivityProvider).value;
     if (conn != null && !isOnline(conn)) return;
-    unawaited(ref.read(syncServiceProvider).syncAll());
+    unawaited(_recoverThenSync());
+  }
+
+  /// If a network blip left us latched in offline mode, restore the real
+  /// session first (no-op otherwise) so the "Offline" banner clears, then
+  /// pull fresh data.
+  Future<void> _recoverThenSync() async {
+    await recoverFromOfflineMode(ref);
+    if (!mounted) return;
+    await ref.read(syncServiceProvider).syncAll();
   }
 
   static const _items = [

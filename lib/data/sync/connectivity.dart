@@ -1,6 +1,7 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/auth_provider.dart';
 import 'sync_service.dart';
 
 /// Streams the device's current connectivity. A non-empty list of results
@@ -33,8 +34,10 @@ void wireAutoSync(WidgetRef ref) {
     final prevOnline = prev?.value != null && isOnline(prev!.value!);
     final nowOnline = next.value != null && isOnline(next.value!);
     if (!prevOnline && nowOnline) {
+      // Restore a real session if we were stuck in offline mode, then sync.
       // ignore: discarded_futures
-      ref.read(syncServiceProvider).syncAll();
+      recoverFromOfflineMode(ref)
+          .then((_) => ref.read(syncServiceProvider).syncAll());
     }
   });
 }

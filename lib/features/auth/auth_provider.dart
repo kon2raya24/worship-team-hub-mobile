@@ -101,3 +101,35 @@ class IsLeaderNotifier extends Notifier<bool> {
     return _last;
   }
 }
+
+/// Best-effort exit from offline mode once the network is back. [offlineMode]
+/// is a one-way latch set by the login flow when a biometric unlock can't
+/// reach Supabase; nothing else clears it, so a brief network blip at unlock
+/// would leave the "Offline" banner stuck on even after the connection
+/// returns. Called from the connectivity listener and the shell's poll, this
+/// restores a real session from the stored credentials and drops the flag.
+///
+/// No-op unless we're actually latched in offline mode, so it's cheap to call
+/// often. Mirrors the biometric sign-in's online path (no MFA prompt — the
+/// device biometric already gated that).
+Future<void> recoverFromOfflineMode(WidgetRef ref) async {
+  if (!ref.read(offlineModeProvider)) return;
+  // A real session may already exist (e.g. restored from storage on launch);
+  // if so, the latch is simply stale — drop it.
+  if (supabase.auth.currentSession != null) {
+    ref.read(offlineModeProvider.notifier).state = false;
+    return;
+  }
+  final svc = ref.read(biometricServiceProvider);
+  final creds = await svc?.readCredentials();
+  if (creds == null) return;
+  try {
+    await supabase.auth
+        .signInWithPassword(email: creds.email, password: creds.password)
+        .timeout(const Duration(seconds: 8));
+    ref.read(offlineModeProvider.notifier).state = false;
+  } catch (_) {
+    // Still unreachable, or the password changed online — stay offline and
+    // try again on the next online tick.
+  }
+}

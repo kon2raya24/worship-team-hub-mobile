@@ -277,6 +277,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             password: creds.password,
           )
           .timeout(_kSignInTimeout);
+      // Real session restored — clear any stale offline flag so the home
+      // screen doesn't keep showing the "offline" banner.
+      ref.read(offlineModeProvider.notifier).state = false;
     } catch (e) {
       // The biometric already proved who the user is. If the failure looks
       // like a network problem, drop into offline mode so the user can still
