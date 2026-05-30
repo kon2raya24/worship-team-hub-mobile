@@ -168,6 +168,11 @@ class AppDb extends _$AppDb {
   Future<SongRow?> getSong(String id) =>
       (select(songs)..where((t) => t.id.equals(id))).getSingleOrNull();
 
+  /// Reactive single-song lookup — re-emits whenever the row changes (e.g.
+  /// after an edit syncs), so the detail view stays in sync with the list.
+  Stream<SongRow?> watchSong(String id) =>
+      (select(songs)..where((t) => t.id.equals(id))).watchSingleOrNull();
+
   // Replace, not upsert, so songs deleted on the server are removed locally.
   // _syncSongs pulls the full library, so the pulled set is authoritative.
   Future<void> replaceSongs(List<SongsCompanion> rows) async {
@@ -323,6 +328,11 @@ extension AppDbReads on AppDb {
 
   Future<DevotionRow?> getDevotion(String id) =>
       (select(devotions)..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  /// Reactive single-devotion lookup — re-emits when the row changes, so the
+  /// detail view stays fresh (mirrors [AppDb.watchSong]).
+  Stream<DevotionRow?> watchDevotion(String id) =>
+      (select(devotions)..where((t) => t.id.equals(id))).watchSingleOrNull();
 
   // Replace the cached set (not upsert) so rows deleted on the server are
   // removed locally instead of lingering forever.

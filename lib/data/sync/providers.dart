@@ -9,10 +9,11 @@ final songsStreamProvider = StreamProvider<List<SongRow>>((ref) {
   return db.watchAllSongs();
 });
 
-/// Single-song lookup from local DB.
-final songByIdProvider = FutureProvider.family<SongRow?, String>((ref, id) {
+/// Single-song lookup from local DB. A *stream* (not a one-shot future) so the
+/// detail view live-updates after an edit syncs — matching [songsStreamProvider].
+final songByIdProvider = StreamProvider.family<SongRow?, String>((ref, id) {
   final db = ref.watch(appDbProvider);
-  return db.getSong(id);
+  return db.watchSong(id);
 });
 
 /// Upcoming setlists (today onward).
@@ -61,8 +62,8 @@ final devotionsStreamProvider = StreamProvider<List<DevotionRow>>((ref) {
 });
 
 final devotionByIdProvider =
-    FutureProvider.family<DevotionRow?, String>((ref, id) {
-  return ref.watch(appDbProvider).getDevotion(id);
+    StreamProvider.family<DevotionRow?, String>((ref, id) {
+  return ref.watch(appDbProvider).watchDevotion(id);
 });
 
 final prayerRequestsStreamProvider =
