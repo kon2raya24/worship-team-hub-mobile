@@ -115,6 +115,15 @@ class Sanctuary {
           side: const BorderSide(color: hairline),
         ),
       ),
+      // Consistent, subtle page transition for pushed routes (detail/compose)
+      // on both platforms. Tab switches use an IndexedStack, so they stay
+      // instant — only pushed MaterialPages pick this up.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: _SubtlePageTransitions(),
+          TargetPlatform.iOS: _SubtlePageTransitions(),
+        },
+      ),
     );
   }
 
@@ -240,6 +249,90 @@ class GlassCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: child,
+    );
+  }
+}
+
+/// Compact, on-brand placeholder for "nothing here yet" lists — a tinted icon
+/// chip over a title + optional hint. Centre it inside a scrollable so
+/// pull-to-refresh still works.
+class EmptyState extends StatelessWidget {
+  const EmptyState({
+    super.key,
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.accent = Sanctuary.auroraViolet,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.10),
+              border: Border.all(color: accent.withValues(alpha: 0.30)),
+              borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+            ),
+            child: Icon(icon, size: 24, color: accent),
+          ),
+          const SizedBox(height: 14),
+          Text(title,
+              textAlign: TextAlign.center,
+              style: Sanctuary.display(fontSize: 16)),
+          if ((subtitle ?? '').isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(subtitle!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: Sanctuary.muted, fontSize: 13, height: 1.4)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A gentle fade + slight upward slide for pushed routes, so screen pushes
+/// feel cohesive across Android and iOS rather than platform-default. Wired in
+/// via [Sanctuary.buildTheme]'s `pageTransitionsTheme`.
+class _SubtlePageTransitions extends PageTransitionsBuilder {
+  const _SubtlePageTransitions();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final curved = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return FadeTransition(
+      opacity: curved,
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.02),
+          end: Offset.zero,
+        ).animate(curved),
+        child: child,
+      ),
     );
   }
 }

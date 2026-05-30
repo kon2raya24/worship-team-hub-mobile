@@ -51,9 +51,11 @@ class AnnouncementsScreen extends ConsumerWidget {
                   children: const [
                     SizedBox(height: 120),
                     Center(
-                      child: Text('No announcements yet.\nPull to sync.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Sanctuary.muted)),
+                      child: EmptyState(
+                        icon: Icons.campaign_outlined,
+                        title: 'No announcements yet',
+                        subtitle: 'Pull down to sync.',
+                      ),
                     ),
                   ],
                 )

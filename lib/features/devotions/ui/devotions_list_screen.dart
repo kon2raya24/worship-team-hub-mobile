@@ -50,9 +50,11 @@ class DevotionsListScreen extends ConsumerWidget {
                   children: const [
                     SizedBox(height: 120),
                     Center(
-                      child: Text('No devotions yet.\nPull to sync.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Sanctuary.muted)),
+                      child: EmptyState(
+                        icon: Icons.auto_stories_outlined,
+                        title: 'No devotions yet',
+                        subtitle: 'Pull down to sync.',
+                      ),
                     ),
                   ],
                 )

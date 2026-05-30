@@ -99,13 +99,17 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
                           children: [
                             const SizedBox(height: 120),
                             Center(
-                              child: Text(
-                                list.isEmpty
-                                    ? 'No songs yet.\nPull to sync.'
-                                    : 'No matches for "$_query"',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Sanctuary.muted),
-                              ),
+                              child: list.isEmpty
+                                  ? const EmptyState(
+                                      icon: Icons.library_music_outlined,
+                                      title: 'No songs yet',
+                                      subtitle: 'Pull down to sync.',
+                                    )
+                                  : EmptyState(
+                                      icon: Icons.search_off_outlined,
+                                      title: 'No matches',
+                                      subtitle: 'Nothing matches "$_query".',
+                                    ),
                             ),
                           ],
                         )

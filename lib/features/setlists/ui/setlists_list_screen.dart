@@ -53,10 +53,10 @@ class SetlistsListScreen extends ConsumerWidget {
                     children: const [
                       SizedBox(height: 120),
                       Center(
-                        child: Text(
-                          'No upcoming setlists.\nPull to sync.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Sanctuary.muted),
+                        child: EmptyState(
+                          icon: Icons.queue_music_outlined,
+                          title: 'No upcoming setlists',
+                          subtitle: 'Pull down to sync.',
                         ),
                       ),
                     ],

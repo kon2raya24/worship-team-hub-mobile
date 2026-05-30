@@ -76,10 +76,10 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                           children: const [
                             SizedBox(height: 120),
                             Center(
-                              child: Text(
-                                'No prayer requests yet.\nBe the first to share.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Sanctuary.muted),
+                              child: EmptyState(
+                                icon: Icons.volunteer_activism_outlined,
+                                title: 'No prayer requests yet',
+                                subtitle: 'Be the first to share.',
                               ),
                             ),
                           ],
