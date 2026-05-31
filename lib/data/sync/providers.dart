@@ -22,6 +22,20 @@ final upcomingSetlistsStreamProvider = StreamProvider<List<SetlistRow>>((ref) {
   return db.watchUpcomingSetlists();
 });
 
+/// Past setlists (before today), newest first — the browsable history.
+final pastSetlistsStreamProvider = StreamProvider<List<SetlistRow>>((ref) {
+  final db = ref.watch(appDbProvider);
+  return db.watchPastSetlists();
+});
+
+/// Single-setlist lookup (past or upcoming) so the detail screen can open any
+/// setlist, not just upcoming ones.
+final setlistByIdProvider =
+    StreamProvider.family<SetlistRow?, String>((ref, id) {
+  final db = ref.watch(appDbProvider);
+  return db.watchSetlist(id);
+});
+
 /// Songs in a given setlist, joined to song metadata, ordered by position.
 final setlistSongsProvider =
     FutureProvider.family<List<SetlistSongWithSong>, String>((ref, setlistId) async {

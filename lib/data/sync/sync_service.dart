@@ -77,7 +77,10 @@ class SyncService {
 
   Future<void> _syncSetlistsAndJoins() async {
     final today = DateTime.now();
+    // Pull a bounded window of PAST setlists too (not just upcoming) so the
+    // history is browsable/openable offline, matching the web app.
     final cutoff = DateTime(today.year, today.month, today.day)
+        .subtract(const Duration(days: 90))
         .toIso8601String()
         .substring(0, 10);
     final rows = await supabase
@@ -504,6 +507,74 @@ class SyncService {
     } catch (e, st) {
       if (kDebugMode) debugPrint('Remove song from setlist failed: $e\n$st');
       return false;
+    }
+  }
+
+  /// Update a setlist's date / theme / notes. Leader-only via RLS.
+  Future<bool> updateSetlist({
+    required String id,
+    required DateTime serviceDate,
+    String? theme,
+    String? notes,
+  }) async {
+    try {
+      await supabase.from('setlists').update({
+        'service_date': serviceDate.toIso8601String().substring(0, 10),
+        'theme': (theme != null && theme.isNotEmpty) ? theme : null,
+        'notes': (notes != null && notes.isNotEmpty) ? notes : null,
+      }).eq('id', id);
+      await _syncSetlistsAndJoins();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Update setlist failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Rewrite the `position` column for every song in a setlist to match the
+  /// given order. Mirrors the web drag-to-reorder. Leader-only via RLS.
+  Future<bool> reorderSetlistSongs(
+    String setlistId,
+    List<String> orderedSongIds,
+  ) async {
+    try {
+      for (var i = 0; i < orderedSongIds.length; i++) {
+        await supabase
+            .from('setlist_songs')
+            .update({'position': i})
+            .eq('setlist_id', setlistId)
+            .eq('song_id', orderedSongIds[i]);
+      }
+      await _syncSetlistsAndJoins();
+      return true;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Reorder setlist failed: $e\n$st');
+      return false;
+    }
+  }
+
+  /// Leader-only — create a public share link for a song or setlist and return
+  /// its token (the DB generates it). Mirrors the web createShareLink.
+  Future<String?> createShareLink({
+    required String resourceType, // 'song' | 'setlist'
+    required String resourceId,
+  }) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) return null;
+    try {
+      final row = await supabase
+          .from('share_links')
+          .insert({
+            'resource_type': resourceType,
+            'resource_id': resourceId,
+            'created_by': user.id,
+          })
+          .select('token')
+          .single();
+      return row['token'] as String?;
+    } catch (e, st) {
+      if (kDebugMode) debugPrint('Create share link failed: $e\n$st');
+      return null;
     }
   }
 

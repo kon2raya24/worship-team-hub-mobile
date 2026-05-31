@@ -1,7 +1,7 @@
 name: worship_team_hub
 description: "Worship Team Hub — chord charts, setlists, and team coordination. Offline-first."
 publish_to: 'none'
-version: 0.1.14+15
+version: 0.1.16+17
 
 environment:
   sdk: ^3.9.2
@@ -47,6 +47,9 @@ dependencies:
 
   # External URL handling
   url_launcher: ^6.3.1
+
+  # Native share sheet — share public links to songs / setlists
+  share_plus: ^10.1.1
 
   # Local prefs
   shared_preferences: ^2.3.2

@@ -30,6 +30,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
     final lower = q.toLowerCase();
     return s.title.toLowerCase().contains(lower) ||
         (s.artist ?? '').toLowerCase().contains(lower) ||
+        s.chordproBody.toLowerCase().contains(lower) ||
         (s.tagsCsv).toLowerCase().contains(lower);
   }
 
@@ -166,7 +167,7 @@ class _SearchBar extends StatelessWidget {
                 fontSize: 14,
               ),
               decoration: const InputDecoration(
-                hintText: 'Search title, artist, tag…',
+                hintText: 'Search title, artist, lyrics, tag…',
                 hintStyle: TextStyle(color: Sanctuary.muted, fontSize: 14),
                 border: InputBorder.none,
                 filled: false,

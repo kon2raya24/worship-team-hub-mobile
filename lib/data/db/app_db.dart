@@ -193,8 +193,24 @@ class AppDb extends _$AppDb {
         .watch();
   }
 
-  // Replace the upcoming-setlist set so deleted (and now-past) setlists drop
-  // out. Per-setlist songs are reconciled separately by replaceSetlistSongs.
+  /// Reactive single-setlist lookup — works for past or upcoming setlists, so
+  /// the detail screen can open any setlist, not only upcoming ones.
+  Stream<SetlistRow?> watchSetlist(String id) =>
+      (select(setlists)..where((t) => t.id.equals(id))).watchSingleOrNull();
+
+  /// Past setlists (before today), newest first.
+  Stream<List<SetlistRow>> watchPastSetlists() {
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    return (select(setlists)
+          ..where((t) => t.serviceDate.isSmallerThanValue(startOfDay))
+          ..orderBy([(t) => OrderingTerm.desc(t.serviceDate)]))
+        .watch();
+  }
+
+  // Replace the cached setlist set (the synced past-window + upcoming) so
+  // setlists deleted on the server drop out. Per-setlist songs are reconciled
+  // separately by replaceSetlistSongs.
   Future<void> replaceSetlists(List<SetlistsCompanion> rows) async {
     await transaction(() async {
       await delete(setlists).go();

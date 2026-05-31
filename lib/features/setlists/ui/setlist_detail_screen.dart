@@ -2,20 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../../core/env.dart';
 import '../../../core/theme.dart';
 import '../../../data/db/app_db.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
 
-class SetlistDetailScreen extends ConsumerWidget {
+class SetlistDetailScreen extends ConsumerStatefulWidget {
   const SetlistDetailScreen({super.key, required this.setlistId});
 
   final String setlistId;
 
-  Future<void> _confirmDeleteSetlist(
-      BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<SetlistDetailScreen> createState() =>
+      _SetlistDetailScreenState();
+}
+
+class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
+  // Local working copy of the song order so drag-reorder shows instantly;
+  // re-seeded from synced data whenever the song membership changes.
+  List<SetlistSongWithSong>? _ordered;
+
+  String get setlistId => widget.setlistId;
+
+  Future<void> _confirmDeleteSetlist() async {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -42,7 +55,7 @@ class SetlistDetailScreen extends ConsumerWidget {
     if (ok != true) return;
     final deleted =
         await ref.read(syncServiceProvider).deleteSetlist(setlistId);
-    if (!context.mounted) return;
+    if (!mounted) return;
     if (deleted) {
       context.go('/setlists');
     } else {
@@ -52,31 +65,74 @@ class SetlistDetailScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _share() async {
+    final token = await ref
+        .read(syncServiceProvider)
+        .createShareLink(resourceType: 'setlist', resourceId: setlistId);
+    if (!mounted) return;
+    if (token != null) {
+      await Share.share('${Env.webBaseUrl}/share/$token');
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not create share link.')),
+      );
+    }
+  }
+
+  Future<void> _onReorder(int oldIndex, int newIndex) async {
+    // ReorderableListView's onReorderItem already adjusts newIndex for the
+    // item removed at oldIndex, so we remove + insert directly.
+    final list = List.of(_ordered ?? const <SetlistSongWithSong>[]);
+    final moved = list.removeAt(oldIndex);
+    list.insert(newIndex, moved);
+    setState(() => _ordered = list);
+    final ok = await ref.read(syncServiceProvider).reorderSetlistSongs(
+          setlistId,
+          list.map((e) => e.join.songId).toList(),
+        );
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save the new order.')),
+      );
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final songs = ref.watch(setlistSongsProvider(setlistId));
-    final setlists = ref.watch(upcomingSetlistsStreamProvider);
-    final setlist = setlists.maybeWhen(
-      data: (list) => list.where((s) => s.id == setlistId).firstOrNull,
-      orElse: () => null,
-    );
+  Widget build(BuildContext context) {
+    final songsAsync = ref.watch(setlistSongsProvider(setlistId));
+    final setlist = ref.watch(setlistByIdProvider(setlistId)).valueOrNull;
     final isLeader = ref.watch(isLeaderProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, size: 20),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/setlists'),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/setlists'),
         ),
         title: const Text('Setlist'),
         actions: [
           if (isLeader)
             IconButton(
+              icon: const Icon(Icons.ios_share, size: 20),
+              tooltip: 'Share link',
+              onPressed: _share,
+            ),
+          if (isLeader)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Edit setlist',
+              onPressed: () => context.push('/setlists/$setlistId/edit'),
+            ),
+          if (isLeader)
+            IconButton(
               icon: const Icon(Icons.delete_outline,
                   size: 20, color: Sanctuary.destructive),
               tooltip: 'Delete setlist',
-              onPressed: () => _confirmDeleteSetlist(context, ref),
+              onPressed: _confirmDeleteSetlist,
             ),
         ],
       ),
@@ -84,13 +140,12 @@ class SetlistDetailScreen extends ConsumerWidget {
           ? FloatingActionButton.extended(
               backgroundColor: Sanctuary.auroraCyan,
               foregroundColor: Sanctuary.ink0,
-              onPressed: () =>
-                  context.push('/setlists/$setlistId/add-song'),
+              onPressed: () => context.push('/setlists/$setlistId/add-song'),
               icon: const Icon(Icons.library_music_outlined),
               label: const Text('Add song'),
             )
           : null,
-      body: songs.when(
+      body: songsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text(
@@ -99,12 +154,28 @@ class SetlistDetailScreen extends ConsumerWidget {
           ),
         ),
         data: (items) {
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              if (setlist != null) _SetlistHeader(setlist: setlist),
-              const SizedBox(height: 16),
-              if (items.isEmpty)
+          // Re-seed the local order when membership changes (song added or
+          // removed) or on first load. Drag-reorders mutate the copy in place.
+          final cur = _ordered;
+          final sameMembership = cur != null &&
+              cur.length == items.length &&
+              cur.every(
+                (o) => items.any((i) => i.join.songId == o.join.songId),
+              );
+          if (!sameMembership) {
+            _ordered = List.of(items);
+          }
+          final list = _ordered!;
+
+          final header =
+              setlist != null ? _SetlistHeader(setlist: setlist) : null;
+
+          if (list.isEmpty) {
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (header != null) header,
+                const SizedBox(height: 16),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 32),
                   child: Center(
@@ -113,19 +184,52 @@ class SetlistDetailScreen extends ConsumerWidget {
                       style: TextStyle(color: Sanctuary.muted),
                     ),
                   ),
-                )
-              else
-                ...items.asMap().entries.map(
-                      (entry) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _SetlistSongRow(
-                          position: entry.key + 1,
-                          item: entry.value,
-                          isLeader: isLeader,
-                          setlistId: setlistId,
-                        ),
+                ),
+              ],
+            );
+          }
+
+          if (isLeader) {
+            // Long-press a row to drag it into a new position.
+            return ReorderableListView.builder(
+              padding: const EdgeInsets.all(16),
+              header: header == null
+                  ? null
+                  : Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: header,
+                    ),
+              itemCount: list.length,
+              onReorderItem: _onReorder,
+              itemBuilder: (context, i) => Padding(
+                key: ValueKey(list[i].join.songId),
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SetlistSongRow(
+                  position: i + 1,
+                  item: list[i],
+                  isLeader: isLeader,
+                  setlistId: setlistId,
+                ),
+              ),
+            );
+          }
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (header != null) header,
+              const SizedBox(height: 16),
+              ...list.asMap().entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _SetlistSongRow(
+                        position: entry.key + 1,
+                        item: entry.value,
+                        isLeader: isLeader,
+                        setlistId: setlistId,
                       ),
                     ),
+                  ),
             ],
           );
         },

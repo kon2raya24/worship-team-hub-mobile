@@ -7,7 +7,10 @@ import '../../../core/theme.dart';
 import '../../../data/sync/sync_service.dart';
 
 class SetlistComposeScreen extends ConsumerStatefulWidget {
-  const SetlistComposeScreen({super.key});
+  const SetlistComposeScreen({super.key, this.setlistId});
+
+  /// When set, edit this existing setlist instead of creating a new one.
+  final String? setlistId;
 
   @override
   ConsumerState<SetlistComposeScreen> createState() =>
@@ -21,12 +24,31 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
   bool _busy = false;
   String? _error;
 
+  bool get _isEditing => widget.setlistId != null;
+
   static DateTime _nextSunday() {
     final now = DateTime.now();
     final dow = now.weekday; // Mon=1 .. Sun=7
     final daysAhead = dow == 7 ? 7 : 7 - dow;
     final s = now.add(Duration(days: daysAhead));
     return DateTime(s.year, s.month, s.day);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isEditing) _loadExisting();
+  }
+
+  Future<void> _loadExisting() async {
+    final existing =
+        await ref.read(appDbProvider).watchSetlist(widget.setlistId!).first;
+    if (existing == null || !mounted) return;
+    setState(() {
+      _date = existing.serviceDate;
+      _theme.text = existing.theme ?? '';
+      _notes.text = existing.notes ?? '';
+    });
   }
 
   @override
@@ -51,11 +73,33 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
       _busy = true;
       _error = null;
     });
-    final id = await ref.read(syncServiceProvider).createSetlist(
-          serviceDate: _date,
-          theme: _theme.text.trim(),
-          notes: _notes.text.trim(),
+    final svc = ref.read(syncServiceProvider);
+    if (_isEditing) {
+      final ok = await svc.updateSetlist(
+        id: widget.setlistId!,
+        serviceDate: _date,
+        theme: _theme.text.trim(),
+        notes: _notes.text.trim(),
+      );
+      if (!mounted) return;
+      if (ok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Setlist updated.')),
         );
+        context.go('/setlists/${widget.setlistId}');
+      } else {
+        setState(() {
+          _busy = false;
+          _error = 'Could not save. Check connection or leader role.';
+        });
+      }
+      return;
+    }
+    final id = await svc.createSetlist(
+      serviceDate: _date,
+      theme: _theme.text.trim(),
+      notes: _notes.text.trim(),
+    );
     if (!mounted) return;
     if (id != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +125,7 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
           onPressed: () =>
               context.canPop() ? context.pop() : context.go('/setlists'),
         ),
-        title: const Text('New setlist'),
+        title: Text(_isEditing ? 'Edit setlist' : 'New setlist'),
       ),
       body: SafeArea(
         child: ListView(
@@ -153,16 +197,18 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white),
                           )
-                        : const Text('Create setlist'),
+                        : Text(_isEditing ? 'Save changes' : 'Create setlist'),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
-            const Text(
-              'Add songs after creating — opens the song picker on the next screen.',
-              style: TextStyle(color: Sanctuary.muted, fontSize: 12),
-            ),
+            if (!_isEditing) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Add songs after creating — opens the song picker on the next screen.',
+                style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+              ),
+            ],
           ],
         ),
       ),

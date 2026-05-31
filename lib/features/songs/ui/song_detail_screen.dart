@@ -4,8 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import '../../../core/env.dart';
 import '../../../core/theme.dart';
 import '../../../data/sync/providers.dart';
 import '../../../data/sync/sync_service.dart';
@@ -45,6 +47,20 @@ class SongDetailScreen extends ConsumerWidget {
               onSelected: (v) async {
                 if (v == 'edit') {
                   context.push('/songs/$songId/edit');
+                } else if (v == 'share') {
+                  final token = await ref
+                      .read(syncServiceProvider)
+                      .createShareLink(
+                          resourceType: 'song', resourceId: songId);
+                  if (!context.mounted) return;
+                  if (token != null) {
+                    await Share.share('${Env.webBaseUrl}/share/$token');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text('Could not create share link.')),
+                    );
+                  }
                 } else if (v == 'delete') {
                   final ok = await showDialog<bool>(
                     context: context,
@@ -91,6 +107,14 @@ class SongDetailScreen extends ConsumerWidget {
                     Icon(Icons.edit_outlined),
                     SizedBox(width: 8),
                     Text('Edit'),
+                  ]),
+                ),
+                PopupMenuItem(
+                  value: 'share',
+                  child: Row(children: [
+                    Icon(Icons.ios_share),
+                    SizedBox(width: 8),
+                    Text('Share link'),
                   ]),
                 ),
                 PopupMenuItem(

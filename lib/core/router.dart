@@ -150,6 +150,11 @@ final routerProvider = Provider<GoRouter>((ref) {
                         builder: (_, state) => SetlistAddSongScreen(
                             setlistId: state.pathParameters['id']!),
                       ),
+                      GoRoute(
+                        path: 'edit',
+                        builder: (_, state) => SetlistComposeScreen(
+                            setlistId: state.pathParameters['id']!),
+                      ),
                     ],
                   ),
                 ],

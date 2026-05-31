@@ -15,6 +15,8 @@ class SetlistsListScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final setlists = ref.watch(upcomingSetlistsStreamProvider);
+    final past = ref.watch(pastSetlistsStreamProvider).valueOrNull ??
+        const <SetlistRow>[];
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -44,10 +46,11 @@ class SetlistsListScreen extends ConsumerWidget {
           ),
         ),
         data: (list) {
+          final hasAny = list.isNotEmpty || past.isNotEmpty;
           return RefreshIndicator(
             color: Sanctuary.auroraCyan,
             onRefresh: () => ref.read(syncServiceProvider).syncAll(),
-            child: list.isEmpty
+            child: !hasAny
                 ? ListView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: const [
@@ -55,17 +58,36 @@ class SetlistsListScreen extends ConsumerWidget {
                       Center(
                         child: EmptyState(
                           icon: Icons.queue_music_outlined,
-                          title: 'No upcoming setlists',
+                          title: 'No setlists yet',
                           subtitle: 'Pull down to sync.',
                         ),
                       ),
                     ],
                   )
-                : ListView.separated(
+                : ListView(
                     padding: const EdgeInsets.all(16),
-                    itemCount: list.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) => _SetlistCard(setlist: list[i]),
+                    children: [
+                      for (final s in list) ...[
+                        _SetlistCard(setlist: s),
+                        const SizedBox(height: 10),
+                      ],
+                      if (past.isNotEmpty) ...[
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8, bottom: 10),
+                          child: Text(
+                            'PAST',
+                            style: Sanctuary.mono(
+                              fontSize: 11,
+                              color: Sanctuary.muted,
+                            ),
+                          ),
+                        ),
+                        for (final s in past) ...[
+                          _SetlistCard(setlist: s),
+                          const SizedBox(height: 10),
+                        ],
+                      ],
+                    ],
                   ),
           );
         },
