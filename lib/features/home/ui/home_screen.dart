@@ -828,6 +828,11 @@ class _PracticeTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The bright-green tile accent (#8EFF6A) is near-invisible on light —
+    // deepen just that one so the icon reads.
+    final accentColor = (!isDark && accent == Sanctuary.success)
+        ? Sanctuary.lightSuccess
+        : accent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -848,11 +853,11 @@ class _PracticeTile extends StatelessWidget {
                 width: 30,
                 height: 30,
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  border: Border.all(color: accent.withValues(alpha: 0.4)),
+                  color: accentColor.withValues(alpha: 0.15),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.4)),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Icon(icon, color: accent, size: 16),
+                child: Icon(icon, color: accentColor, size: 16),
               ),
               const SizedBox(height: 6),
               Text(

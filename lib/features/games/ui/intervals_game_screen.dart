@@ -69,26 +69,31 @@ QuizQuestion _newQuestion() {
 }
 
 Widget _nameNotePrompt(String from, MusicInterval interval) {
-  return Text.rich(
-    TextSpan(
-      children: [
-        const TextSpan(text: 'What note is a '),
+  return Builder(
+    builder: (context) {
+      final cs = Theme.of(context).colorScheme;
+      return Text.rich(
         TextSpan(
-          text: interval.short,
-          style: const TextStyle(color: Sanctuary.auroraViolet, fontFamily: 'monospace'),
+          children: [
+            const TextSpan(text: 'What note is a '),
+            TextSpan(
+              text: interval.short,
+              style: const TextStyle(color: Sanctuary.auroraViolet, fontFamily: 'monospace'),
+            ),
+            TextSpan(
+              text: ' (${interval.name})',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            const TextSpan(text: ' above '),
+            TextSpan(
+              text: from,
+              style: const TextStyle(color: Sanctuary.auroraCyan, fontFamily: 'monospace'),
+            ),
+            const TextSpan(text: '?'),
+          ],
         ),
-        TextSpan(
-          text: ' (${interval.name})',
-          style: const TextStyle(color: Sanctuary.muted),
-        ),
-        const TextSpan(text: ' above '),
-        TextSpan(
-          text: from,
-          style: const TextStyle(color: Sanctuary.auroraCyan, fontFamily: 'monospace'),
-        ),
-        const TextSpan(text: '?'),
-      ],
-    ),
+      );
+    },
   );
 }
 

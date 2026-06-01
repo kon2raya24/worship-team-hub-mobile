@@ -100,6 +100,8 @@ class _MoreCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent =
+        item.accent == Sanctuary.muted ? cs.onSurfaceVariant : item.accent;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -109,7 +111,7 @@ class _MoreCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
-            border: Border.all(color: item.accent.withValues(alpha: 0.22)),
+            border: Border.all(color: accent.withValues(alpha: 0.22)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
           child: Row(
@@ -118,12 +120,12 @@ class _MoreCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: item.accent.withValues(alpha: 0.15),
+                  color: accent.withValues(alpha: 0.15),
                   border:
-                      Border.all(color: item.accent.withValues(alpha: 0.4)),
+                      Border.all(color: accent.withValues(alpha: 0.4)),
                   borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
                 ),
-                child: Icon(item.icon, color: item.accent, size: 22),
+                child: Icon(item.icon, color: accent, size: 22),
               ),
               const SizedBox(width: 12),
               Expanded(

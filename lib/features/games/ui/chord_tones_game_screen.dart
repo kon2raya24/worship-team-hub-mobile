@@ -99,25 +99,30 @@ QuizQuestion _newQuestion() {
 }
 
 Widget _prompt(String root, _ChordTypeInfo ct, _ToneSpec tone) {
-  return Text.rich(
-    TextSpan(
-      children: [
-        const TextSpan(text: "What's the "),
+  return Builder(
+    builder: (context) {
+      final cs = Theme.of(context).colorScheme;
+      return Text.rich(
         TextSpan(
-          text: tone.name,
-          style: const TextStyle(color: Sanctuary.auroraViolet, fontFamily: 'monospace'),
+          children: [
+            const TextSpan(text: "What's the "),
+            TextSpan(
+              text: tone.name,
+              style: const TextStyle(color: Sanctuary.auroraViolet, fontFamily: 'monospace'),
+            ),
+            const TextSpan(text: ' of '),
+            TextSpan(
+              text: '$root${ct.suffix}',
+              style: const TextStyle(color: Sanctuary.auroraCyan, fontFamily: 'monospace'),
+            ),
+            TextSpan(
+              text: ' (${ct.label})',
+              style: TextStyle(color: cs.onSurfaceVariant),
+            ),
+            const TextSpan(text: '?'),
+          ],
         ),
-        const TextSpan(text: ' of '),
-        TextSpan(
-          text: '$root${ct.suffix}',
-          style: const TextStyle(color: Sanctuary.auroraCyan, fontFamily: 'monospace'),
-        ),
-        TextSpan(
-          text: ' (${ct.label})',
-          style: const TextStyle(color: Sanctuary.muted),
-        ),
-        const TextSpan(text: '?'),
-      ],
-    ),
+      );
+    },
   );
 }

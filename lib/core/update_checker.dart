@@ -135,17 +135,19 @@ class UpdateChecker {
     final action = await showDialog<_UpdateAction>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) {
+        final cs = Theme.of(ctx).colorScheme;
+        return AlertDialog(
         backgroundColor: Sanctuary.ink2,
         title: Text('Update available · ${release.tag}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'A newer version of Worship Hub is ready. Tap "Update" to '
               'download and install — your data stays put.',
-              style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             ),
             if (release.notes.trim().isNotEmpty) ...[
               const SizedBox(height: 12),
@@ -154,8 +156,8 @@ class UpdateChecker {
                 child: SingleChildScrollView(
                   child: Text(
                     release.notes.trim(),
-                    style: const TextStyle(
-                      color: Sanctuary.foreground,
+                    style: TextStyle(
+                      color: cs.onSurface,
                       fontSize: 12,
                       height: 1.45,
                     ),
@@ -182,7 +184,8 @@ class UpdateChecker {
             child: const Text('Update'),
           ),
         ],
-      ),
+      );
+      },
     );
 
     if (action == _UpdateAction.skip) {
@@ -316,6 +319,7 @@ class _DownloadInstallDialogState extends State<_DownloadInstallDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final downloading = _error == null;
     return PopScope(
       canPop: !downloading, // don't allow dismiss mid-download
@@ -338,8 +342,8 @@ class _DownloadInstallDialogState extends State<_DownloadInstallDialog> {
               ),
               const SizedBox(height: 10),
               Text(_status,
-                  style: const TextStyle(
-                      color: Sanctuary.muted, fontSize: 12)),
+                  style: TextStyle(
+                      color: cs.onSurfaceVariant, fontSize: 12)),
             ] else
               Text(_error!,
                   style: const TextStyle(

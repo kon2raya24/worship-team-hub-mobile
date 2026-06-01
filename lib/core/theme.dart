@@ -129,15 +129,17 @@ class Sanctuary {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: glassFill,
+        // On light, a 4%-tint fill + 10% border made fields nearly invisible on
+        // a white card — give light a clearer grey fill + stronger border.
+        fillColor: isDark ? glassFill : const Color(0xFFF0F2F8),
         hintStyle: TextStyle(color: mutedColor),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: line),
+          borderSide: BorderSide(color: isDark ? line : lightHairlineStrong),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: line),
+          borderSide: BorderSide(color: isDark ? line : lightHairlineStrong),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),

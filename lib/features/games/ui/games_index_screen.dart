@@ -9,6 +9,7 @@ class GamesIndexScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -44,14 +45,14 @@ class GamesIndexScreen extends StatelessWidget {
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
               childAspectRatio: 1.05,
-              children: const [
-                _GameTile(
+              children: [
+                const _GameTile(
                   title: 'Transpose',
                   icon: Icons.swap_horiz,
                   accent: Sanctuary.auroraViolet,
                   path: '/games/transpose',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'Nashville',
                   icon: Icons.tag,
                   accent: Sanctuary.auroraAmber,
@@ -60,34 +61,34 @@ class GamesIndexScreen extends StatelessWidget {
                 _GameTile(
                   title: 'Capo math',
                   icon: Icons.straighten,
-                  accent: Sanctuary.success,
+                  accent: isDark ? Sanctuary.success : Sanctuary.lightSuccess,
                   path: '/games/capo',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'Key sigs',
                   icon: Icons.vpn_key_outlined,
                   accent: Sanctuary.auroraCyan,
                   path: '/games/keys',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'BPM tapper',
                   icon: Icons.timer_outlined,
                   accent: Sanctuary.auroraMagenta,
                   path: '/games/bpm',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'Intervals',
                   icon: Icons.linear_scale,
                   accent: Sanctuary.auroraMagenta,
                   path: '/games/intervals',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'Chord tones',
                   icon: Icons.adjust,
                   accent: Sanctuary.auroraCyan,
                   path: '/games/chord-tones',
                 ),
-                _GameTile(
+                const _GameTile(
                   title: 'Relative key',
                   icon: Icons.swap_vert,
                   accent: Sanctuary.auroraViolet,
