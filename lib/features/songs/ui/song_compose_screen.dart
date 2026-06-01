@@ -149,6 +149,7 @@ class _SongComposeScreenState extends ConsumerState<SongComposeScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -221,7 +222,8 @@ class _SongComposeScreenState extends ConsumerState<SongComposeScreen> {
                   Row(
                     children: [
                       Text('CHORDPRO BODY',
-                          style: Sanctuary.mono(fontSize: 10)),
+                          style: Sanctuary.mono(
+                              fontSize: 10, color: cs.onSurfaceVariant)),
                       const Spacer(),
                       TextButton.icon(
                         onPressed: () {
@@ -257,7 +259,7 @@ class _SongComposeScreenState extends ConsumerState<SongComposeScreen> {
                     maxLines: 24,
                     style: Sanctuary.mono(
                       fontSize: 13,
-                      color: Sanctuary.foreground,
+                      color: cs.onSurface,
                       letterSpacing: 0,
                     ),
                     decoration: const InputDecoration(
@@ -268,8 +270,7 @@ class _SongComposeScreenState extends ConsumerState<SongComposeScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Text(_error!,
-                        style: const TextStyle(
-                            color: Sanctuary.destructive, fontSize: 13)),
+                        style: TextStyle(color: cs.error, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
                   FilledButton(

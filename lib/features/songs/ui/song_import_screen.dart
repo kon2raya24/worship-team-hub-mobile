@@ -102,6 +102,8 @@ class _SongImportScreenState extends ConsumerState<SongImportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -122,7 +124,9 @@ class _SongImportScreenState extends ConsumerState<SongImportScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('PASTE', style: Sanctuary.mono(fontSize: 10)),
+                  Text('PASTE',
+                      style: Sanctuary.mono(
+                          fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: _input,
@@ -130,7 +134,7 @@ class _SongImportScreenState extends ConsumerState<SongImportScreen> {
                     maxLines: 24,
                     style: Sanctuary.mono(
                       fontSize: 12,
-                      color: Sanctuary.foreground,
+                      color: cs.onSurface,
                       letterSpacing: 0,
                     ),
                     decoration: const InputDecoration(
@@ -142,22 +146,24 @@ class _SongImportScreenState extends ConsumerState<SongImportScreen> {
                   const SizedBox(height: 12),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    activeThumbColor: Sanctuary.auroraCyan,
+                    activeThumbColor: cs.secondary,
                     title: const Text('Auto-convert chord-over-lyrics'),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Detects standalone chord lines and inlines them.',
-                      style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
                     value: _autoConvert,
                     onChanged: (v) => setState(() => _autoConvert = v),
                   ),
                   SwitchListTile.adaptive(
                     contentPadding: EdgeInsets.zero,
-                    activeThumbColor: Sanctuary.auroraCyan,
+                    activeThumbColor: cs.secondary,
                     title: const Text('Skip existing titles'),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Case-insensitive match against songs already in the library.',
-                      style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
                     value: _skipExisting,
                     onChanged: (v) => setState(() => _skipExisting = v),
@@ -165,14 +171,16 @@ class _SongImportScreenState extends ConsumerState<SongImportScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 8),
                     Text(_error!,
-                        style: const TextStyle(
-                            color: Sanctuary.destructive, fontSize: 13)),
+                        style: TextStyle(color: cs.error, fontSize: 13)),
                   ],
                   if (_info != null) ...[
                     const SizedBox(height: 8),
                     Text(_info!,
-                        style: const TextStyle(
-                            color: Sanctuary.success, fontSize: 13)),
+                        style: TextStyle(
+                            color: isDark
+                                ? Sanctuary.success
+                                : Sanctuary.lightSuccess,
+                            fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
                   FilledButton(

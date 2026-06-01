@@ -65,6 +65,8 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final songs = ref.watch(songsStreamProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -83,7 +85,7 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (e, _) => Center(
             child: Text('Failed to load songs.\n$e',
-                style: const TextStyle(color: Sanctuary.muted)),
+                style: TextStyle(color: cs.onSurfaceVariant)),
           ),
           data: (list) {
             final filtered = _query.isEmpty
@@ -129,13 +131,14 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: selected
-                                  ? Sanctuary.auroraCyan.withValues(alpha: 0.1)
-                                  : Sanctuary.glass1,
+                                  ? cs.secondary.withValues(alpha: 0.1)
+                                  : (isDark
+                                      ? Sanctuary.glass1
+                                      : Sanctuary.lightGlass1),
                               border: Border.all(
                                 color: selected
-                                    ? Sanctuary.auroraCyan
-                                        .withValues(alpha: 0.5)
-                                    : Sanctuary.hairline,
+                                    ? cs.secondary.withValues(alpha: 0.5)
+                                    : cs.outlineVariant,
                               ),
                               borderRadius: BorderRadius.circular(
                                   Sanctuary.radiusMd),
@@ -153,8 +156,8 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
                                               fontWeight: FontWeight.w600)),
                                       if ((s.artist ?? '').isNotEmpty)
                                         Text(s.artist!,
-                                            style: const TextStyle(
-                                                color: Sanctuary.muted,
+                                            style: TextStyle(
+                                                color: cs.onSurfaceVariant,
                                                 fontSize: 12)),
                                     ],
                                   ),
@@ -164,10 +167,10 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: Sanctuary.auroraCyan
+                                      color: cs.secondary
                                           .withValues(alpha: 0.1),
                                       border: Border.all(
-                                          color: Sanctuary.auroraCyan
+                                          color: cs.secondary
                                               .withValues(alpha: 0.3)),
                                       borderRadius:
                                           BorderRadius.circular(
@@ -177,7 +180,7 @@ class _SetlistAddSongScreenState extends ConsumerState<SetlistAddSongScreen> {
                                       s.originalKey!,
                                       style: Sanctuary.mono(
                                           fontSize: 11,
-                                          color: Sanctuary.auroraCyan,
+                                          color: cs.secondary,
                                           letterSpacing: 0),
                                     ),
                                   ),

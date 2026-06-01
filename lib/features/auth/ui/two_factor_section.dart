@@ -167,6 +167,8 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -174,10 +176,13 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
         children: [
           Row(
             children: [
-              const Icon(Icons.shield_outlined,
-                  size: 16, color: Sanctuary.success),
+              Icon(Icons.shield_outlined,
+                  size: 16,
+                  color: isDark ? Sanctuary.success : Sanctuary.lightSuccess),
               const SizedBox(width: 8),
-              Text('TWO-FACTOR', style: Sanctuary.mono(fontSize: 10)),
+              Text('TWO-FACTOR',
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
             ],
           ),
           const SizedBox(height: 10),
@@ -185,8 +190,7 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
           if (_error != null) ...[
             const SizedBox(height: 10),
             Text(_error!,
-                style: const TextStyle(
-                    color: Sanctuary.destructive, fontSize: 13)),
+                style: TextStyle(color: cs.error, fontSize: 13)),
           ],
         ],
       ),
@@ -194,6 +198,8 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
   }
 
   List<Widget> _body() {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (_status) {
       case _Status.loading:
         return const [
@@ -204,10 +210,10 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
         ];
       case _Status.off:
         return [
-          const Text(
+          Text(
             'Add a code step at sign-in with an authenticator app '
             '(Google Authenticator, Authy, 1Password).',
-            style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
           ),
           const SizedBox(height: 12),
           FilledButton(
@@ -224,9 +230,9 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
         ];
       case _Status.enrolling:
         return [
-          const Text(
+          Text(
             'Scan this in your authenticator app, then enter the 6-digit code.',
-            style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
           ),
           const SizedBox(height: 12),
           if (_qrSvg != null)
@@ -242,13 +248,13 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
             ),
           if (_secret != null) ...[
             const SizedBox(height: 12),
-            const Text('Or enter this key manually:',
-                style: TextStyle(color: Sanctuary.muted, fontSize: 11)),
+            Text('Or enter this key manually:',
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
             const SizedBox(height: 4),
             SelectableText(
               _secret!,
               style: Sanctuary.mono(
-                  fontSize: 12, color: Sanctuary.foreground, letterSpacing: 1),
+                  fontSize: 12, color: cs.onSurface, letterSpacing: 1),
             ),
           ],
           const SizedBox(height: 12),
@@ -289,13 +295,17 @@ class _TwoFactorSectionState extends ConsumerState<TwoFactorSection> {
       case _Status.on:
         return [
           Row(
-            children: const [
-              Icon(Icons.check_circle, size: 16, color: Sanctuary.success),
-              SizedBox(width: 8),
+            children: [
+              Icon(Icons.check_circle,
+                  size: 16,
+                  color: isDark ? Sanctuary.success : Sanctuary.lightSuccess),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   "2FA is on. You'll enter a code from your app at sign-in.",
-                  style: TextStyle(color: Sanctuary.success, fontSize: 13),
+                  style: TextStyle(
+                      color: isDark ? Sanctuary.success : Sanctuary.lightSuccess,
+                      fontSize: 13),
                 ),
               ),
             ],

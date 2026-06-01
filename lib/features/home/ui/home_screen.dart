@@ -60,12 +60,13 @@ class HomeScreen extends ConsumerWidget {
         ? const AsyncValue<SyncResult>.data(SyncResult.skipped)
         : ref.watch(startupSyncProvider);
     wireAutoSync(ref);
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         // Tinted ink so scrolling content doesn't show through and clip
         // weirdly at the AppBar boundary.
-        backgroundColor: Sanctuary.ink1.withValues(alpha: 0.85),
+        backgroundColor: cs.surfaceContainer.withValues(alpha: 0.85),
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: const Text('Worship Hub'),
@@ -240,8 +241,9 @@ class _SignOutDialogState extends ConsumerState<_SignOutDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return AlertDialog(
-      backgroundColor: Sanctuary.ink2,
+      backgroundColor: cs.surfaceContainer,
       title: const Text('Sign out?'),
       content: const Text(
         'You\'ll be returned to the login screen. Your offline cache and '
@@ -254,7 +256,7 @@ class _SignOutDialogState extends ConsumerState<_SignOutDialog> {
         ),
         FilledButton(
           style: FilledButton.styleFrom(
-            backgroundColor: Sanctuary.destructive,
+            backgroundColor: cs.error,
           ),
           onPressed: _busy ? null : _confirm,
           child: _busy
@@ -481,6 +483,8 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -489,7 +493,7 @@ class _StatCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Sanctuary.glass1,
+            color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
             border: Border.all(color: accent.withValues(alpha: 0.22)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
@@ -516,7 +520,7 @@ class _StatCard extends StatelessWidget {
                       label.toUpperCase(),
                       style: Sanctuary.mono(
                         fontSize: 9,
-                        color: Sanctuary.muted,
+                        color: cs.onSurfaceVariant,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -536,8 +540,8 @@ class _StatCard extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 1),
                         child: Text(
                           sub!,
-                          style: const TextStyle(
-                            color: Sanctuary.muted,
+                          style: TextStyle(
+                            color: cs.onSurfaceVariant,
                             fontSize: 10,
                           ),
                           maxLines: 1,
@@ -625,6 +629,8 @@ class _FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -633,7 +639,7 @@ class _FeatureCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Sanctuary.glass1,
+            color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
             border: Border.all(color: accent.withValues(alpha: 0.25)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
@@ -656,7 +662,7 @@ class _FeatureCard extends StatelessWidget {
                   const SizedBox(width: 10),
                   Text(eyebrow,
                       style: Sanctuary.mono(
-                          fontSize: 10, color: Sanctuary.muted)),
+                          fontSize: 10, color: cs.onSurfaceVariant)),
                 ],
               ),
               const SizedBox(height: 12),
@@ -673,8 +679,8 @@ class _FeatureCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   body,
-                  style: const TextStyle(
-                    color: Sanctuary.muted,
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
                     fontSize: 13,
                     height: 1.4,
                   ),
@@ -724,11 +730,13 @@ class _PracticeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: Column(
@@ -769,12 +777,12 @@ class _PracticeSection extends StatelessWidget {
                         'All games',
                         style: Sanctuary.mono(
                           fontSize: 11,
-                          color: Sanctuary.muted,
+                          color: cs.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward,
-                          size: 12, color: Sanctuary.muted),
+                      Icon(Icons.arrow_forward,
+                          size: 12, color: cs.onSurfaceVariant),
                     ],
                   ),
                 ),
@@ -818,6 +826,8 @@ class _PracticeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -826,8 +836,8 @@ class _PracticeTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
           decoration: BoxDecoration(
-            color: Sanctuary.glass1,
-            border: Border.all(color: Sanctuary.hairline),
+            color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+            border: Border.all(color: cs.outlineVariant),
             borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
           ),
           child: Column(
@@ -850,8 +860,8 @@ class _PracticeTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Sanctuary.foreground,
+                style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 10.5,
                   fontWeight: FontWeight.w500,
                   height: 1.0,
@@ -871,6 +881,8 @@ class _PinnedAnnouncementsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final pinned = (ref.watch(announcementsStreamProvider).value ?? const [])
         .where((a) => a.pinned)
         .take(3)
@@ -879,8 +891,8 @@ class _PinnedAnnouncementsSection extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: Column(
@@ -922,10 +934,10 @@ class _PinnedAnnouncementsSection extends ConsumerWidget {
                     children: [
                       Text('All news',
                           style: Sanctuary.mono(
-                              fontSize: 11, color: Sanctuary.muted)),
+                              fontSize: 11, color: cs.onSurfaceVariant)),
                       const SizedBox(width: 4),
-                      const Icon(Icons.arrow_forward,
-                          size: 12, color: Sanctuary.muted),
+                      Icon(Icons.arrow_forward,
+                          size: 12, color: cs.onSurfaceVariant),
                     ],
                   ),
                 ),
@@ -934,9 +946,9 @@ class _PinnedAnnouncementsSection extends ConsumerWidget {
           ),
           const SizedBox(height: 10),
           if (pinned.isEmpty)
-            const Text(
+            Text(
               'Nothing pinned right now.',
-              style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             )
           else
             ...pinned.map(
@@ -965,8 +977,8 @@ class _PinnedAnnouncementsSection extends ConsumerWidget {
                           padding: const EdgeInsets.only(top: 2),
                           child: Text(
                             a.body,
-                            style: const TextStyle(
-                              color: Sanctuary.muted,
+                            style: TextStyle(
+                              color: cs.onSurfaceVariant,
                               fontSize: 12,
                               height: 1.4,
                             ),

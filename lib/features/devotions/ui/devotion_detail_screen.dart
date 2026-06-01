@@ -14,6 +14,7 @@ class DevotionDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final d = ref.watch(devotionByIdProvider(devotionId));
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -30,17 +31,17 @@ class DevotionDetailScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+              style: TextStyle(color: cs.onSurfaceVariant)),
         ),
         data: (d) {
           if (d == null) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
                   'Not in local cache.\nSync from the home screen.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Sanctuary.muted),
+                  style: TextStyle(color: cs.onSurfaceVariant),
                 ),
               ),
             );
@@ -58,8 +59,8 @@ class DevotionDetailScreen extends ConsumerWidget {
               if ((d.scriptureRef ?? '').isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(d.scriptureRef!,
-                    style: const TextStyle(
-                        color: Sanctuary.muted,
+                    style: TextStyle(
+                        color: cs.onSurfaceVariant,
                         fontSize: 14,
                         fontStyle: FontStyle.italic)),
               ],
@@ -69,8 +70,8 @@ class DevotionDetailScreen extends ConsumerWidget {
                 child: MarkdownBody(
                   data: d.body,
                   styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(
-                        color: Sanctuary.foreground,
+                    p: TextStyle(
+                        color: cs.onSurface,
                         fontSize: 15,
                         height: 1.55),
                     h1: Sanctuary.display(fontSize: 22),
@@ -84,8 +85,8 @@ class DevotionDetailScreen extends ConsumerWidget {
                             width: 3),
                       ),
                     ),
-                    blockquote: const TextStyle(
-                        color: Sanctuary.muted,
+                    blockquote: TextStyle(
+                        color: cs.onSurfaceVariant,
                         fontSize: 14,
                         fontStyle: FontStyle.italic),
                     a: const TextStyle(

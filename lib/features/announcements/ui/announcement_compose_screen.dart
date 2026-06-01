@@ -60,6 +60,7 @@ class _AnnouncementComposeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -100,10 +101,10 @@ class _AnnouncementComposeScreenState
                     contentPadding: EdgeInsets.zero,
                     activeThumbColor: Sanctuary.auroraAmber,
                     title: const Text('Pin to top'),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Pinned announcements appear above the rest until '
                       'unpinned.',
-                      style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
                     ),
                     value: _pinned,
                     onChanged: (v) => setState(() => _pinned = v),
@@ -112,8 +113,8 @@ class _AnnouncementComposeScreenState
                     const SizedBox(height: 8),
                     Text(
                       _error!,
-                      style: const TextStyle(
-                        color: Sanctuary.destructive,
+                      style: TextStyle(
+                        color: cs.error,
                         fontSize: 13,
                       ),
                     ),

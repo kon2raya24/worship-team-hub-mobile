@@ -36,6 +36,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final songs = ref.watch(songsStreamProvider);
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
@@ -58,7 +59,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
       ),
       floatingActionButton: isLeader
           ? FloatingActionButton.extended(
-              backgroundColor: Sanctuary.auroraViolet,
+              backgroundColor: cs.primary,
               foregroundColor: Colors.white,
               onPressed: () => context.push('/songs/new'),
               icon: const Icon(Icons.add),
@@ -72,7 +73,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
             padding: const EdgeInsets.all(24),
             child: Text(
               'Failed to load songs.\n$e',
-              style: const TextStyle(color: Sanctuary.muted),
+              style: TextStyle(color: cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
           ),
@@ -92,7 +93,7 @@ class _SongsListScreenState extends ConsumerState<SongsListScreen> {
               ),
               Expanded(
                 child: RefreshIndicator(
-                  color: Sanctuary.auroraCyan,
+                  color: cs.secondary,
                   onRefresh: () => ref.read(syncServiceProvider).syncAll(),
                   child: filtered.isEmpty
                       ? ListView(
@@ -146,39 +147,41 @@ class _SearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: Row(
         children: [
-          const Icon(Icons.search, size: 18, color: Sanctuary.muted),
+          Icon(Icons.search, size: 18, color: cs.onSurfaceVariant),
           const SizedBox(width: 8),
           Expanded(
             child: TextField(
               controller: controller,
               onChanged: onChanged,
               textInputAction: TextInputAction.search,
-              style: const TextStyle(
-                color: Sanctuary.foreground,
+              style: TextStyle(
+                color: cs.onSurface,
                 fontSize: 14,
               ),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Search title, artist, lyrics, tag…',
-                hintStyle: TextStyle(color: Sanctuary.muted, fontSize: 14),
+                hintStyle: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
                 border: InputBorder.none,
                 filled: false,
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
           if (controller.text.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.clear, size: 18, color: Sanctuary.muted),
+              icon: Icon(Icons.clear, size: 18, color: cs.onSurfaceVariant),
               tooltip: 'Clear',
               onPressed: () {
                 controller.clear();
@@ -190,7 +193,7 @@ class _SearchBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Text(
                 '$total',
-                style: const TextStyle(color: Sanctuary.muted, fontSize: 12),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
               ),
             ),
         ],
@@ -206,6 +209,7 @@ class _SongRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final artist = song.artist;
     final key = song.originalKey;
     return Material(
@@ -234,8 +238,8 @@ class _SongRow extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         artist,
-                        style: const TextStyle(
-                          color: Sanctuary.muted,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
                           fontSize: 13,
                         ),
                         maxLines: 1,
@@ -253,9 +257,9 @@ class _SongRow extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Sanctuary.auroraCyan.withValues(alpha: 0.1),
+                    color: cs.secondary.withValues(alpha: 0.1),
                     border: Border.all(
-                      color: Sanctuary.auroraCyan.withValues(alpha: 0.3),
+                      color: cs.secondary.withValues(alpha: 0.3),
                     ),
                     borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
                   ),
@@ -263,7 +267,7 @@ class _SongRow extends StatelessWidget {
                     key,
                     style: Sanctuary.mono(
                       fontSize: 12,
-                      color: Sanctuary.auroraCyan,
+                      color: cs.secondary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

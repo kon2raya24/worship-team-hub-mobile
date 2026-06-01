@@ -14,6 +14,7 @@ class TeamScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final profiles = ref.watch(allProfilesProvider);
     final isLeader = ref.watch(isLeaderProvider);
     final me = supabase.auth.currentUser?.id;
@@ -31,7 +32,7 @@ class TeamScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load team.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+              style: TextStyle(color: cs.onSurfaceVariant)),
         ),
         data: (list) => RefreshIndicator(
           color: Sanctuary.auroraCyan,
@@ -82,6 +83,8 @@ class _MemberCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLeaderRole = p.role == 'leader';
     return GlassCard(
       padding: const EdgeInsets.all(14),
@@ -93,11 +96,11 @@ class _MemberCard extends ConsumerWidget {
             decoration: BoxDecoration(
               color: isLeaderRole
                   ? Sanctuary.auroraViolet.withValues(alpha: 0.18)
-                  : Sanctuary.glass1,
+                  : (isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1),
               border: Border.all(
                 color: isLeaderRole
                     ? Sanctuary.auroraViolet.withValues(alpha: 0.45)
-                    : Sanctuary.hairline,
+                    : cs.outlineVariant,
               ),
               borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
             ),
@@ -109,7 +112,7 @@ class _MemberCard extends ConsumerWidget {
                 fontWeight: FontWeight.w700,
                 color: isLeaderRole
                     ? Sanctuary.auroraViolet
-                    : Sanctuary.foreground,
+                    : cs.onSurface,
               ),
             ),
           ),
@@ -137,14 +140,16 @@ class _MemberCard extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Sanctuary.glass1,
-                          border: Border.all(color: Sanctuary.hairline),
+                          color: isDark
+                              ? Sanctuary.glass1
+                              : Sanctuary.lightGlass1,
+                          border: Border.all(color: cs.outlineVariant),
                           borderRadius:
                               BorderRadius.circular(Sanctuary.radiusSm),
                         ),
                         child: Text('YOU',
                             style: Sanctuary.mono(
-                                fontSize: 9, color: Sanctuary.muted)),
+                                fontSize: 9, color: cs.onSurfaceVariant)),
                       ),
                     ],
                   ],
@@ -188,9 +193,9 @@ class _MemberCard extends ConsumerWidget {
           ),
           if (isLeader && !isMe)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz,
-                  size: 18, color: Sanctuary.muted),
-              color: Sanctuary.ink2,
+              icon: Icon(Icons.more_horiz,
+                  size: 18, color: cs.onSurfaceVariant),
+              color: cs.surfaceContainer,
               onSelected: (v) async {
                 final newRole = isLeaderRole ? 'member' : 'leader';
                 final ok = await ref

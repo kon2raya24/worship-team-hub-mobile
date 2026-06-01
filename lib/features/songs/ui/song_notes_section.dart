@@ -57,6 +57,7 @@ class _SongNotesSectionState extends ConsumerState<SongNotesSection> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final notes = ref.watch(songNotesStreamProvider(widget.songId));
     return GlassCard(
       padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
@@ -75,8 +76,8 @@ class _SongNotesSectionState extends ConsumerState<SongNotesSection> {
               notes.maybeWhen(
                 data: (n) => Text(
                   '${n.length}',
-                  style: const TextStyle(
-                      color: Sanctuary.muted, fontSize: 11),
+                  style: TextStyle(
+                      color: cs.onSurfaceVariant, fontSize: 11),
                 ),
                 orElse: () => const SizedBox.shrink(),
               ),
@@ -89,13 +90,14 @@ class _SongNotesSectionState extends ConsumerState<SongNotesSection> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
             error: (e, _) => Text('Notes failed: $e',
-                style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
             data: (list) => list.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
                       'No notes yet. Drop the first practice tip below.',
-                      style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                     ),
                   )
                 : Column(
@@ -143,6 +145,7 @@ class _NoteRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final author = (note.authorName ?? '').isEmpty
         ? 'Anonymous'
         : note.authorName!;
@@ -170,16 +173,16 @@ class _NoteRow extends ConsumerWidget {
                     const SizedBox(width: 6),
                     Text(
                       DateFormat.MMMd().add_jm().format(note.createdAt),
-                      style: const TextStyle(
-                          color: Sanctuary.muted, fontSize: 10),
+                      style: TextStyle(
+                          color: cs.onSurfaceVariant, fontSize: 10),
                     ),
                   ],
                 ),
                 const SizedBox(height: 2),
                 Text(
                   note.body,
-                  style: const TextStyle(
-                    color: Sanctuary.foreground,
+                  style: TextStyle(
+                    color: cs.onSurface,
                     fontSize: 13,
                     height: 1.45,
                   ),
@@ -189,7 +192,7 @@ class _NoteRow extends ConsumerWidget {
           ),
           if (canDelete)
             IconButton(
-              icon: const Icon(Icons.close, size: 14, color: Sanctuary.muted),
+              icon: Icon(Icons.close, size: 14, color: cs.onSurfaceVariant),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
               tooltip: 'Delete note',

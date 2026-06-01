@@ -73,6 +73,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -100,9 +101,9 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                     style: Sanctuary.display(fontSize: 24),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'Your leader can promote your role once you\'re in.',
-                    style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -139,8 +140,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _error!,
-                            style: const TextStyle(
-                              color: Sanctuary.destructive,
+                            style: TextStyle(
+                              color: cs.error,
                               fontSize: 13,
                             ),
                           ),
@@ -149,8 +150,8 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _info!,
-                            style: const TextStyle(
-                              color: Sanctuary.auroraCyan,
+                            style: TextStyle(
+                              color: cs.secondary,
                               fontSize: 13,
                             ),
                           ),

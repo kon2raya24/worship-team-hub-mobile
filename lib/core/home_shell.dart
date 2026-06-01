@@ -9,7 +9,6 @@ import '../data/sync/sync_service.dart';
 import '../features/auth/auth_provider.dart';
 import 'push_service.dart';
 import 'supabase_client.dart';
-import 'theme.dart';
 
 /// Wraps every primary route with a persistent bottom navigation bar.
 /// Each [StatefulShellBranch] keeps its own nav stack — going into a
@@ -125,13 +124,14 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: widget.navShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Sanctuary.ink1.withValues(alpha: 0.95),
-          border: const Border(top: BorderSide(color: Sanctuary.hairline)),
+          color: cs.surfaceContainer.withValues(alpha: 0.95),
+          border: Border(top: BorderSide(color: cs.outlineVariant)),
         ),
         child: SafeArea(
           top: false,
@@ -139,20 +139,20 @@ class _HomeShellState extends ConsumerState<HomeShell>
             data: NavigationBarThemeData(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              indicatorColor: Sanctuary.auroraViolet.withValues(alpha: 0.18),
+              indicatorColor: cs.primary.withValues(alpha: 0.18),
               iconTheme: WidgetStateProperty.resolveWith(
                 (states) => IconThemeData(
                   color: states.contains(WidgetState.selected)
-                      ? Sanctuary.auroraViolet
-                      : Sanctuary.muted,
+                      ? cs.primary
+                      : cs.onSurfaceVariant,
                   size: 22,
                 ),
               ),
               labelTextStyle: WidgetStateProperty.resolveWith(
                 (states) => TextStyle(
                   color: states.contains(WidgetState.selected)
-                      ? Sanctuary.foreground
-                      : Sanctuary.muted,
+                      ? cs.onSurface
+                      : cs.onSurfaceVariant,
                   fontSize: 11,
                   fontWeight: states.contains(WidgetState.selected)
                       ? FontWeight.w600

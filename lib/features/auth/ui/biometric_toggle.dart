@@ -90,6 +90,8 @@ class _BiometricToggleState extends ConsumerState<BiometricToggle> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final svc = ref.watch(biometricServiceProvider);
     if (svc == null || _canCheck != true) return const SizedBox.shrink();
 
@@ -97,8 +99,8 @@ class _BiometricToggleState extends ConsumerState<BiometricToggle> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: Row(
@@ -106,7 +108,7 @@ class _BiometricToggleState extends ConsumerState<BiometricToggle> {
           Icon(
             Icons.fingerprint,
             size: 22,
-            color: enabled ? Sanctuary.auroraCyan : Sanctuary.muted,
+            color: enabled ? cs.secondary : cs.onSurfaceVariant,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -121,8 +123,8 @@ class _BiometricToggleState extends ConsumerState<BiometricToggle> {
                   enabled
                       ? 'On · skip the password on next sign-in'
                       : 'Off · tap Set up to enrol now',
-                  style: const TextStyle(
-                    color: Sanctuary.muted,
+                  style: TextStyle(
+                    color: cs.onSurfaceVariant,
                     fontSize: 12,
                   ),
                 ),
@@ -132,26 +134,26 @@ class _BiometricToggleState extends ConsumerState<BiometricToggle> {
           if (enabled)
             TextButton(
               onPressed: _busy ? null : _disable,
-              child: const Text(
+              child: Text(
                 'Disable',
-                style: TextStyle(color: Sanctuary.destructive),
+                style: TextStyle(color: cs.error),
               ),
             )
           else
             TextButton(
               onPressed: _busy ? null : _enrol,
               child: _busy
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 14,
                       width: 14,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Sanctuary.auroraCyan,
+                        color: cs.secondary,
                       ),
                     )
-                  : const Text(
+                  : Text(
                       'Set up',
-                      style: TextStyle(color: Sanctuary.auroraCyan),
+                      style: TextStyle(color: cs.secondary),
                     ),
             ),
         ],
@@ -179,17 +181,18 @@ class _PasswordConfirmDialogState extends State<_PasswordConfirmDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return AlertDialog(
-      backgroundColor: Sanctuary.ink2,
+      backgroundColor: cs.surfaceContainerHigh,
       title: const Text('Enter your password'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Confirm your password to enable fingerprint sign-in. We\'ll '
             'store it encrypted on this device only.',
-            style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
           ),
           const SizedBox(height: 16),
           TextField(

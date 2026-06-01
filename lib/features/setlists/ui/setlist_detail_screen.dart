@@ -29,10 +29,11 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
   String get setlistId => widget.setlistId;
 
   Future<void> _confirmDeleteSetlist() async {
+    final cs = Theme.of(context).colorScheme;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Sanctuary.ink2,
+        backgroundColor: cs.surfaceContainer,
         title: const Text('Delete setlist?'),
         content: const Text(
           'The Sunday plan and song order will be removed for the whole team.',
@@ -44,7 +45,7 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: Sanctuary.destructive,
+              backgroundColor: cs.error,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
@@ -100,6 +101,7 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final songsAsync = ref.watch(setlistSongsProvider(setlistId));
     final setlist = ref.watch(setlistByIdProvider(setlistId)).valueOrNull;
     final isLeader = ref.watch(isLeaderProvider);
@@ -129,8 +131,7 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
             ),
           if (isLeader)
             IconButton(
-              icon: const Icon(Icons.delete_outline,
-                  size: 20, color: Sanctuary.destructive),
+              icon: Icon(Icons.delete_outline, size: 20, color: cs.error),
               tooltip: 'Delete setlist',
               onPressed: _confirmDeleteSetlist,
             ),
@@ -138,8 +139,8 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
       ),
       floatingActionButton: isLeader
           ? FloatingActionButton.extended(
-              backgroundColor: Sanctuary.auroraCyan,
-              foregroundColor: Sanctuary.ink0,
+              backgroundColor: cs.secondary,
+              foregroundColor: cs.onSecondary,
               onPressed: () => context.push('/setlists/$setlistId/add-song'),
               icon: const Icon(Icons.library_music_outlined),
               label: const Text('Add song'),
@@ -150,7 +151,7 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
         error: (e, _) => Center(
           child: Text(
             'Failed to load setlist.\n$e',
-            style: const TextStyle(color: Sanctuary.muted),
+            style: TextStyle(color: cs.onSurfaceVariant),
           ),
         ),
         data: (items) {
@@ -176,12 +177,12 @@ class _SetlistDetailScreenState extends ConsumerState<SetlistDetailScreen> {
               children: [
                 if (header != null) header,
                 const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 32),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Center(
                     child: Text(
                       'No songs in this setlist.',
-                      style: TextStyle(color: Sanctuary.muted),
+                      style: TextStyle(color: cs.onSurfaceVariant),
                     ),
                   ),
                 ),
@@ -244,15 +245,16 @@ class _SetlistHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final date = setlist.serviceDate;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(
+            Icon(
               Icons.calendar_today_outlined,
-              color: Sanctuary.auroraViolet,
+              color: cs.primary,
               size: 14,
             ),
             const SizedBox(width: 6),
@@ -260,7 +262,7 @@ class _SetlistHeader extends StatelessWidget {
               DateFormat('EEE').format(date).toUpperCase(),
               style: Sanctuary.mono(
                 fontSize: 11,
-                color: Sanctuary.auroraViolet,
+                color: cs.primary,
               ),
             ),
           ],
@@ -274,7 +276,7 @@ class _SetlistHeader extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             setlist.theme!,
-            style: const TextStyle(color: Sanctuary.muted, fontSize: 14),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
           ),
         ],
         if ((setlist.notes ?? '').isNotEmpty) ...[
@@ -283,7 +285,7 @@ class _SetlistHeader extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             child: Text(
               setlist.notes!,
-              style: const TextStyle(color: Sanctuary.foreground, fontSize: 13),
+              style: TextStyle(color: cs.onSurface, fontSize: 13),
             ),
           ),
         ],
@@ -307,6 +309,7 @@ class _SetlistSongRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final song = item.song;
     final playedKey = item.join.playedInKey;
     final displayKey =
@@ -331,7 +334,7 @@ class _SetlistSongRow extends ConsumerWidget {
                   '$position',
                   style: Sanctuary.mono(
                     fontSize: 16,
-                    color: Sanctuary.muted,
+                    color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0,
                   ),
@@ -354,8 +357,8 @@ class _SetlistSongRow extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         song.artist!,
-                        style: const TextStyle(
-                          color: Sanctuary.muted,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
                           fontSize: 12,
                         ),
                         maxLines: 1,
@@ -373,9 +376,9 @@ class _SetlistSongRow extends ConsumerWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Sanctuary.auroraCyan.withValues(alpha: 0.1),
+                    color: cs.secondary.withValues(alpha: 0.1),
                     border: Border.all(
-                      color: Sanctuary.auroraCyan.withValues(alpha: 0.3),
+                      color: cs.secondary.withValues(alpha: 0.3),
                     ),
                     borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
                   ),
@@ -383,7 +386,7 @@ class _SetlistSongRow extends ConsumerWidget {
                     displayKey!,
                     style: Sanctuary.mono(
                       fontSize: 12,
-                      color: Sanctuary.auroraCyan,
+                      color: cs.secondary,
                       fontWeight: FontWeight.w600,
                       letterSpacing: 0,
                     ),
@@ -392,8 +395,7 @@ class _SetlistSongRow extends ConsumerWidget {
               ],
               if (isLeader)
                 IconButton(
-                  icon: const Icon(Icons.close,
-                      size: 18, color: Sanctuary.muted),
+                  icon: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
                   tooltip: 'Remove from setlist',
                   onPressed: () async {
                     final ok = await ref

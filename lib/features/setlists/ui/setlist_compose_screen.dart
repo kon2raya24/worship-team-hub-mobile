@@ -116,6 +116,8 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -136,7 +138,9 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('SERVICE DATE', style: Sanctuary.mono(fontSize: 10)),
+                  Text('SERVICE DATE',
+                      style: Sanctuary.mono(
+                          fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: _pickDate,
@@ -145,19 +149,21 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 14),
                       decoration: BoxDecoration(
-                        color: Sanctuary.glass1,
-                        border: Border.all(color: Sanctuary.hairline),
+                        color: isDark
+                            ? Sanctuary.glass1
+                            : Sanctuary.lightGlass1,
+                        border: Border.all(color: cs.outlineVariant),
                         borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_today_outlined,
-                              size: 18, color: Sanctuary.auroraCyan),
+                          Icon(Icons.calendar_today_outlined,
+                              size: 18, color: cs.secondary),
                           const SizedBox(width: 10),
                           Text(
                             DateFormat('EEEE, MMM d, y').format(_date),
-                            style: const TextStyle(
-                                color: Sanctuary.foreground, fontSize: 14),
+                            style: TextStyle(
+                                color: cs.onSurface, fontSize: 14),
                           ),
                         ],
                       ),
@@ -184,8 +190,7 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Text(_error!,
-                        style: const TextStyle(
-                            color: Sanctuary.destructive, fontSize: 13)),
+                        style: TextStyle(color: cs.error, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
                   FilledButton(
@@ -204,9 +209,9 @@ class _SetlistComposeScreenState extends ConsumerState<SetlistComposeScreen> {
             ),
             if (!_isEditing) ...[
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Add songs after creating — opens the song picker on the next screen.',
-                style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
               ),
             ],
           ],

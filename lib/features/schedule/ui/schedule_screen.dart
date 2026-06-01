@@ -27,6 +27,7 @@ class ScheduleScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final assignments = ref.watch(upcomingScheduleStreamProvider);
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
@@ -43,7 +44,7 @@ class ScheduleScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load schedule.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+              style: TextStyle(color: cs.onSurfaceVariant)),
         ),
         data: (rows) {
           final dates = _nextFourSundays();
@@ -149,6 +150,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final accent =
         widget.isFirst ? Sanctuary.auroraCyan : Sanctuary.auroraViolet;
     return GlassCard(
@@ -162,8 +164,8 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                   style: Sanctuary.mono(fontSize: 10, color: accent)),
               const Spacer(),
               Text('${widget.assignments.length} assigned',
-                  style: const TextStyle(
-                      color: Sanctuary.muted, fontSize: 11)),
+                  style: TextStyle(
+                      color: cs.onSurfaceVariant, fontSize: 11)),
             ],
           ),
           const SizedBox(height: 3),
@@ -171,9 +173,9 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
               style: Sanctuary.display(fontSize: 17)),
           const SizedBox(height: 6),
           if (widget.assignments.isEmpty)
-            const Text(
+            Text(
               'No assignments yet.',
-              style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             )
           else
             ...widget.assignments.map((a) => Padding(
@@ -203,16 +205,16 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                       Expanded(
                         child: Text(
                           a.memberName,
-                          style: const TextStyle(
-                              color: Sanctuary.foreground, fontSize: 14),
+                          style: TextStyle(
+                              color: cs.onSurface, fontSize: 14),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (widget.isLeader)
                         IconButton(
-                          icon: const Icon(Icons.close,
-                              size: 16, color: Sanctuary.muted),
+                          icon: Icon(Icons.close,
+                              size: 16, color: cs.onSurfaceVariant),
                           tooltip: 'Remove',
                           onPressed: () => _remove(a),
                           visualDensity: VisualDensity.compact,
@@ -224,7 +226,7 @@ class _ScheduleCardState extends ConsumerState<_ScheduleCard> {
                   ),
                 )),
           if (widget.isLeader) ...[
-            const Divider(color: Sanctuary.hairline, height: 12),
+            Divider(color: cs.outlineVariant, height: 12),
             _AssignForm(
               picked: _picked,
               role: _role,
@@ -259,6 +261,7 @@ class _AssignForm extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final profiles = ref.watch(allProfilesProvider);
     return profiles.when(
       loading: () => const SizedBox(
@@ -266,7 +269,7 @@ class _AssignForm extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
       error: (e, _) => Text('Members: $e',
-          style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
+          style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
       data: (members) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -280,13 +283,13 @@ class _AssignForm extends ConsumerWidget {
                     isDense: true,
                     hintText: 'Pick member',
                   ),
-                  dropdownColor: Sanctuary.ink2,
+                  dropdownColor: cs.surfaceContainer,
                   items: members
                       .map((m) => DropdownMenuItem(
                             value: m.id,
                             child: Text(m.displayName,
-                                style: const TextStyle(
-                                    color: Sanctuary.foreground, fontSize: 13),
+                                style: TextStyle(
+                                    color: cs.onSurface, fontSize: 13),
                                 overflow: TextOverflow.ellipsis),
                           ))
                       .toList(),
@@ -304,14 +307,14 @@ class _AssignForm extends ConsumerWidget {
                   decoration: const InputDecoration(
                     isDense: true,
                   ),
-                  dropdownColor: Sanctuary.ink2,
+                  dropdownColor: cs.surfaceContainer,
                   items: _roles
                       .map((r) => DropdownMenuItem(
                             value: r,
                             child: Text(r,
                                 style: Sanctuary.mono(
                                     fontSize: 12,
-                                    color: Sanctuary.foreground,
+                                    color: cs.onSurface,
                                     letterSpacing: 0)),
                           ))
                       .toList(),
@@ -326,16 +329,16 @@ class _AssignForm extends ConsumerWidget {
           FilledButton.icon(
             onPressed: picked == null || busy ? null : onAdd,
             style: FilledButton.styleFrom(
-              backgroundColor: Sanctuary.auroraCyan,
-              foregroundColor: Sanctuary.ink0,
+              backgroundColor: cs.secondary,
+              foregroundColor: cs.onSecondary,
               minimumSize: const Size(0, 40),
             ),
             icon: busy
-                ? const SizedBox(
+                ? SizedBox(
                     width: 14,
                     height: 14,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Sanctuary.ink0),
+                        strokeWidth: 2, color: cs.onSecondary),
                   )
                 : const Icon(Icons.add, size: 18),
             label: Text(busy ? 'Adding…' : 'Add member'),
@@ -402,6 +405,7 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final profiles = ref.watch(allProfilesProvider);
     return GlassCard(
       padding: const EdgeInsets.all(11),
@@ -416,10 +420,10 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
             onTap: _pickDate,
             borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
             child: InputDecorator(
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 isDense: true,
                 prefixIcon: Icon(Icons.calendar_today,
-                    size: 16, color: Sanctuary.muted),
+                    size: 16, color: cs.onSurfaceVariant),
               ),
               child: Text(
                 _date == null
@@ -427,7 +431,7 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
                     : DateFormat('EEE, MMM d, yyyy').format(_date!),
                 style: TextStyle(
                   color:
-                      _date == null ? Sanctuary.muted : Sanctuary.foreground,
+                      _date == null ? cs.onSurfaceVariant : cs.onSurface,
                   fontSize: 13,
                 ),
               ),
@@ -440,7 +444,7 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             ),
             error: (e, _) => Text('Members: $e',
-                style: const TextStyle(color: Sanctuary.muted, fontSize: 12)),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
             data: (members) => Row(
               children: [
                 Expanded(
@@ -451,13 +455,13 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
                       isDense: true,
                       hintText: 'Pick member',
                     ),
-                    dropdownColor: Sanctuary.ink2,
+                    dropdownColor: cs.surfaceContainer,
                     items: members
                         .map((m) => DropdownMenuItem(
                               value: m.id,
                               child: Text(m.displayName,
-                                  style: const TextStyle(
-                                      color: Sanctuary.foreground,
+                                  style: TextStyle(
+                                      color: cs.onSurface,
                                       fontSize: 13),
                                   overflow: TextOverflow.ellipsis),
                             ))
@@ -475,14 +479,14 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
                     initialValue: _role,
                     isExpanded: true,
                     decoration: const InputDecoration(isDense: true),
-                    dropdownColor: Sanctuary.ink2,
+                    dropdownColor: cs.surfaceContainer,
                     items: _roles
                         .map((r) => DropdownMenuItem(
                               value: r,
                               child: Text(r,
                                   style: Sanctuary.mono(
                                       fontSize: 12,
-                                      color: Sanctuary.foreground,
+                                      color: cs.onSurface,
                                       letterSpacing: 0)),
                             ))
                         .toList(),
@@ -499,7 +503,7 @@ class _CustomDateCardState extends ConsumerState<_CustomDateCard> {
             onPressed:
                 (_date == null || _picked == null || _busy) ? null : _add,
             style: FilledButton.styleFrom(
-              backgroundColor: Sanctuary.auroraViolet,
+              backgroundColor: cs.primary,
               foregroundColor: Colors.white,
               minimumSize: const Size(0, 40),
             ),

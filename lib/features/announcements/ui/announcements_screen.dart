@@ -15,6 +15,7 @@ class AnnouncementsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final feed = ref.watch(announcementsStreamProvider);
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
@@ -29,7 +30,7 @@ class AnnouncementsScreen extends ConsumerWidget {
       ),
       floatingActionButton: isLeader
           ? FloatingActionButton.extended(
-              backgroundColor: Sanctuary.auroraViolet,
+              backgroundColor: cs.primary,
               foregroundColor: Colors.white,
               onPressed: () => context.push('/announcements/new'),
               icon: const Icon(Icons.add),
@@ -40,10 +41,10 @@ class AnnouncementsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+              style: TextStyle(color: cs.onSurfaceVariant)),
         ),
         data: (list) => RefreshIndicator(
-          color: Sanctuary.auroraCyan,
+          color: cs.secondary,
           onRefresh: () => ref.read(syncServiceProvider).syncAll(),
           child: list.isEmpty
               ? ListView(
@@ -89,10 +90,11 @@ class _Card extends ConsumerWidget {
   }
 
   Future<void> _confirmDelete(WidgetRef ref, BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Sanctuary.ink2,
+        backgroundColor: cs.surfaceContainer,
         title: const Text('Delete announcement?'),
         content: Text('"${a.title}" will be removed for everyone.'),
         actions: [
@@ -102,7 +104,7 @@ class _Card extends ConsumerWidget {
           ),
           FilledButton(
             style: FilledButton.styleFrom(
-              backgroundColor: Sanctuary.destructive,
+              backgroundColor: cs.error,
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete'),
@@ -123,6 +125,7 @@ class _Card extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -142,13 +145,13 @@ class _Card extends ConsumerWidget {
                 const SizedBox(width: 10),
               ],
               Text(DateFormat.MMMd().add_jm().format(a.createdAt),
-                  style: const TextStyle(color: Sanctuary.muted, fontSize: 11)),
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
               const Spacer(),
               if (isLeader)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz,
-                      size: 18, color: Sanctuary.muted),
-                  color: Sanctuary.ink2,
+                  icon: Icon(Icons.more_horiz,
+                      size: 18, color: cs.onSurfaceVariant),
+                  color: cs.surfaceContainer,
                   onSelected: (v) {
                     if (v == 'pin') _togglePin(ref, context);
                     if (v == 'delete') _confirmDelete(ref, context);
@@ -166,15 +169,14 @@ class _Card extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_outline,
-                              color: Sanctuary.destructive),
-                          SizedBox(width: 8),
+                          Icon(Icons.delete_outline, color: cs.error),
+                          const SizedBox(width: 8),
                           Text('Delete',
-                              style: TextStyle(color: Sanctuary.destructive)),
+                              style: TextStyle(color: cs.error)),
                         ],
                       ),
                     ),
@@ -190,10 +192,10 @@ class _Card extends ConsumerWidget {
           MarkdownBody(
             data: a.body,
             styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(
-                  color: Sanctuary.foreground, fontSize: 14, height: 1.5),
-              a: const TextStyle(
-                  color: Sanctuary.auroraCyan,
+              p: TextStyle(
+                  color: cs.onSurface, fontSize: 14, height: 1.5),
+              a: TextStyle(
+                  color: cs.secondary,
                   decoration: TextDecoration.underline),
             ),
           ),

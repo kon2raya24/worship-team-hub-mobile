@@ -14,6 +14,7 @@ class DevotionsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final devotions = ref.watch(devotionsStreamProvider);
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
@@ -39,10 +40,10 @@ class DevotionsListScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(
           child: Text('Failed to load.\n$e',
-              style: const TextStyle(color: Sanctuary.muted)),
+              style: TextStyle(color: cs.onSurfaceVariant)),
         ),
         data: (list) => RefreshIndicator(
-          color: Sanctuary.auroraCyan,
+          color: cs.secondary,
           onRefresh: () => ref.read(syncServiceProvider).syncAll(),
           child: list.isEmpty
               ? ListView(
@@ -76,6 +77,7 @@ class _Row extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -100,8 +102,8 @@ class _Row extends StatelessWidget {
               if ((d.scriptureRef ?? '').isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Text(d.scriptureRef!,
-                    style: const TextStyle(
-                        color: Sanctuary.muted,
+                    style: TextStyle(
+                        color: cs.onSurfaceVariant,
                         fontSize: 13,
                         fontStyle: FontStyle.italic)),
               ],

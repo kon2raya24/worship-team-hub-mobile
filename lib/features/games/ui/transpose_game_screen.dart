@@ -115,6 +115,9 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
     final round = _rounds[_index];
     final isLast = _index == _rounds.length - 1;
     final finished = _submitted && isLast;
@@ -142,10 +145,12 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
             children: [
               Text(
                 'Round ${_index + 1} / $_roundsPerGame',
-                style: Sanctuary.mono(fontSize: 10),
+                style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant),
               ),
               const Spacer(),
-              Text('Score', style: Sanctuary.mono(fontSize: 10)),
+              Text('Score',
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
               const SizedBox(width: 6),
               Text(
                 '$_score / $_roundsPerGame',
@@ -164,14 +169,18 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
               children: [
                 Row(
                   children: [
-                    Text('ORIGINAL', style: Sanctuary.mono(fontSize: 10)),
+                    Text('ORIGINAL',
+                        style: Sanctuary.mono(
+                            fontSize: 10, color: cs.onSurfaceVariant)),
                     const SizedBox(width: 8),
                     _KeyChip(label: round.fromKey, color: Sanctuary.auroraViolet),
                     const SizedBox(width: 10),
-                    const Icon(Icons.arrow_forward,
-                        size: 14, color: Sanctuary.muted),
+                    Icon(Icons.arrow_forward,
+                        size: 14, color: cs.onSurfaceVariant),
                     const SizedBox(width: 10),
-                    Text('TARGET', style: Sanctuary.mono(fontSize: 10)),
+                    Text('TARGET',
+                        style: Sanctuary.mono(
+                            fontSize: 10, color: cs.onSurfaceVariant)),
                     const SizedBox(width: 8),
                     _KeyChip(label: round.toKey, color: Sanctuary.auroraCyan),
                   ],
@@ -204,7 +213,7 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                             style: Sanctuary.mono(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Sanctuary.foreground,
+                              color: cs.onSurface,
                               letterSpacing: 0,
                             ),
                             decoration: InputDecoration(
@@ -212,22 +221,19 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                               isDense: true,
                               filled: true,
                               fillColor: right
-                                  ? Sanctuary.success.withValues(alpha: 0.12)
+                                  ? successColor.withValues(alpha: 0.12)
                                   : wrong
-                                      ? Sanctuary.destructive
-                                          .withValues(alpha: 0.12)
+                                      ? cs.error.withValues(alpha: 0.12)
                                       : null,
                               enabledBorder: OutlineInputBorder(
                                 borderRadius:
                                     BorderRadius.circular(Sanctuary.radiusMd),
                                 borderSide: BorderSide(
                                   color: right
-                                      ? Sanctuary.success
-                                          .withValues(alpha: 0.5)
+                                      ? successColor.withValues(alpha: 0.5)
                                       : wrong
-                                          ? Sanctuary.destructive
-                                              .withValues(alpha: 0.5)
-                                          : Sanctuary.hairline,
+                                          ? cs.error.withValues(alpha: 0.5)
+                                          : cs.outlineVariant,
                                 ),
                               ),
                             ),
@@ -239,7 +245,7 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                             round.expected[i],
                             style: Sanctuary.mono(
                               fontSize: 11,
-                              color: Sanctuary.success,
+                              color: successColor,
                               letterSpacing: 0,
                             ),
                           ),
@@ -258,7 +264,9 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('GAME OVER', style: Sanctuary.mono(fontSize: 10)),
+                      Text('GAME OVER',
+                          style: Sanctuary.mono(
+                              fontSize: 10, color: cs.onSurfaceVariant)),
                       const SizedBox(height: 4),
                       Text(
                         '$_score / $_roundsPerGame',
@@ -271,8 +279,8 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                             : _score >= 3
                                 ? "Solid — that 'play in F' request won't faze you."
                                 : 'Keep going. The circle of fifths gets easier.',
-                        style: const TextStyle(
-                          color: Sanctuary.muted,
+                        style: TextStyle(
+                          color: cs.onSurfaceVariant,
                           fontSize: 13,
                         ),
                       ),
@@ -290,9 +298,7 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
                       Text(
                         allCorrect ? '✓ Correct' : '✕ Not quite',
                         style: TextStyle(
-                          color: allCorrect
-                              ? Sanctuary.success
-                              : Sanctuary.destructive,
+                          color: allCorrect ? successColor : cs.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -308,9 +314,9 @@ class _TransposeGameScreenState extends State<TransposeGameScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Tip: minor chords use lowercase m (Am). Flats use b (Bb), sharps use #.',
-            style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+            style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
           ),
         ],
       ),
@@ -351,18 +357,20 @@ class _ChordPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
       ),
       child: Text(
         label,
         style: Sanctuary.mono(
           fontSize: 15,
-          color: Sanctuary.foreground,
+          color: cs.onSurface,
           letterSpacing: 0,
         ),
       ),

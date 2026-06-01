@@ -8,12 +8,13 @@ class GamesIndexScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         // Tinted ink so chord/grid content doesn't peek through when
         // scrolled to the top.
-        backgroundColor: Sanctuary.ink1.withValues(alpha: 0.85),
+        backgroundColor: cs.surfaceContainer.withValues(alpha: 0.85),
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         leading: IconButton(
@@ -28,12 +29,12 @@ class GamesIndexScreen extends StatelessWidget {
           children: [
             Text(
               'PRACTICE',
-              style: Sanctuary.mono(fontSize: 10, color: Sanctuary.muted),
+              style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: 4),
             Text(
               'Music-theory drills for the worship team.',
-              style: const TextStyle(color: Sanctuary.muted, fontSize: 13),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
             ),
             const SizedBox(height: 18),
             GridView.count(
@@ -118,6 +119,8 @@ class _GameTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -126,8 +129,8 @@ class _GameTile extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
           decoration: BoxDecoration(
-            color: Sanctuary.glass1,
-            border: Border.all(color: Sanctuary.hairline),
+            color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+            border: Border.all(color: cs.outlineVariant),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
           child: Column(
@@ -150,8 +153,8 @@ class _GameTile extends StatelessWidget {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Sanctuary.foreground,
+                style: TextStyle(
+                  color: cs.onSurface,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                   height: 1.2,

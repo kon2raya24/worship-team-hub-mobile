@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../../../core/supabase_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/theme_mode.dart';
 import '../../../core/update_checker.dart';
 import '../../../data/sync/sync_service.dart';
 import '../../auth/auth_provider.dart';
@@ -100,6 +101,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final success = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
+    final themeMode = ref.watch(themeModeProvider);
     final email = supabase.auth.currentUser?.email ?? '';
     if (!_hydrated) {
       return const Scaffold(
@@ -126,13 +131,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('ACCOUNT', style: Sanctuary.mono(fontSize: 10)),
+                  Text('ACCOUNT', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 8),
                   Text(email,
-                      style: const TextStyle(
-                          color: Sanctuary.muted, fontSize: 13)),
+                      style: TextStyle(
+                          color: cs.onSurfaceVariant, fontSize: 13)),
                   const SizedBox(height: 16),
-                  Text('DISPLAY NAME', style: Sanctuary.mono(fontSize: 10)),
+                  Text('DISPLAY NAME', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: _name,
@@ -140,7 +145,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     decoration: const InputDecoration(hintText: 'Your name'),
                   ),
                   const SizedBox(height: 12),
-                  Text('INSTRUMENTS', style: Sanctuary.mono(fontSize: 10)),
+                  Text('INSTRUMENTS', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   TextField(
                     controller: _instruments,
@@ -151,14 +156,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Text(_error!,
-                        style: const TextStyle(
-                            color: Sanctuary.destructive, fontSize: 13)),
+                        style: TextStyle(
+                            color: cs.error, fontSize: 13)),
                   ],
                   if (_info != null) ...[
                     const SizedBox(height: 10),
                     Text(_info!,
-                        style: const TextStyle(
-                            color: Sanctuary.success, fontSize: 13)),
+                        style: TextStyle(
+                            color: success, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
                   FilledButton(
@@ -176,16 +181,52 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Text('SECURITY', style: Sanctuary.mono(fontSize: 10)),
+            Text('APPEARANCE',
+                style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('Theme',
+                      style: TextStyle(color: cs.onSurface, fontSize: 14)),
+                  const SizedBox(height: 4),
+                  Text('Light, dark, or follow your device.',
+                      style:
+                          TextStyle(color: cs.onSurfaceVariant, fontSize: 12)),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<ThemeMode>(
+                      segments: const [
+                        ButtonSegment(
+                            value: ThemeMode.light, label: Text('Light')),
+                        ButtonSegment(
+                            value: ThemeMode.dark, label: Text('Dark')),
+                        ButtonSegment(
+                            value: ThemeMode.system, label: Text('System')),
+                      ],
+                      selected: {themeMode},
+                      showSelectedIcon: false,
+                      onSelectionChanged: (s) =>
+                          ref.read(themeModeProvider.notifier).set(s.first),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('SECURITY', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
             const SizedBox(height: 8),
             const BiometricToggle(),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Password and email changes happen on the web app for now.',
-              style: TextStyle(color: Sanctuary.muted, fontSize: 12),
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12),
             ),
             const SizedBox(height: 16),
-            Text('UPDATES', style: Sanctuary.mono(fontSize: 10)),
+            Text('UPDATES', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
             const SizedBox(height: 8),
             GlassCard(
               padding: const EdgeInsets.all(16),
@@ -194,16 +235,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.system_update,
-                          size: 18, color: Sanctuary.muted),
+                      Icon(Icons.system_update,
+                          size: 18, color: cs.onSurfaceVariant),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           _version == null
                               ? 'Worship Hub'
                               : 'Worship Hub · v$_version',
-                          style: const TextStyle(
-                              color: Sanctuary.foreground, fontSize: 14),
+                          style: TextStyle(
+                              color: cs.onSurface, fontSize: 14),
                         ),
                       ),
                     ],

@@ -321,7 +321,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final shouldEnable = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Sanctuary.ink2,
+        backgroundColor: Theme.of(ctx).colorScheme.surfaceContainerHigh,
         title: const Text('Enable fingerprint sign-in?'),
         content: const Text(
           'Sign in next time with your fingerprint. Your credentials are stored '
@@ -355,6 +355,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final svc = ref.watch(biometricServiceProvider);
     // Only show the biometric button when the user has explicitly enrolled
     // biometric AND creds are present. "Remember me" alone (creds stored,
@@ -381,7 +382,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Worship · Team · Hub',
-                    style: Sanctuary.mono(fontSize: 11),
+                    style: Sanctuary.mono(
+                        fontSize: 11, color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 32),
 
@@ -389,19 +391,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     _BiometricButton(busy: _busy, onTap: _signInWithBiometric),
                     const SizedBox(height: 14),
                     Row(
-                      children: const [
-                        Expanded(child: Divider(color: Sanctuary.hairline)),
+                      children: [
+                        Expanded(child: Divider(color: cs.outlineVariant)),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
                           child: Text(
                             'or',
                             style: TextStyle(
-                              color: Sanctuary.muted,
+                              color: cs.onSurfaceVariant,
                               fontSize: 12,
                             ),
                           ),
                         ),
-                        Expanded(child: Divider(color: Sanctuary.hairline)),
+                        Expanded(child: Divider(color: cs.outlineVariant)),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -435,8 +437,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _error!,
-                            style: const TextStyle(
-                              color: Sanctuary.destructive,
+                            style: TextStyle(
+                              color: cs.error,
                               fontSize: 13,
                             ),
                           ),
@@ -472,15 +474,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                         materialTapTargetSize:
                                             MaterialTapTargetSize.shrinkWrap,
                                         visualDensity: VisualDensity.compact,
-                                        activeColor: Sanctuary.auroraCyan,
-                                        checkColor: Sanctuary.ink0,
+                                        activeColor: cs.secondary,
+                                        checkColor: cs.onSecondary,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    const Text(
+                                    Text(
                                       'Remember me',
                                       style: TextStyle(
-                                        color: Sanctuary.muted,
+                                        color: cs.onSurfaceVariant,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -500,10 +502,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                 minimumSize: const Size(0, 32),
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Forgot password?',
                                 style: TextStyle(
-                                  color: Sanctuary.muted,
+                                  color: cs.onSurfaceVariant,
                                   fontSize: 12,
                                 ),
                               ),
@@ -534,16 +536,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       Text(
                         'New here?',
                         style: TextStyle(
-                          color: Sanctuary.muted.withValues(alpha: 0.8),
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.8),
                           fontSize: 13,
                         ),
                       ),
                       TextButton(
                         onPressed: _busy ? null : () => context.push('/signup'),
-                        child: const Text(
+                        child: Text(
                           'Create an account',
                           style: TextStyle(
-                            color: Sanctuary.auroraCyan,
+                            color: cs.secondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),

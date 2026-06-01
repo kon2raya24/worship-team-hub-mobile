@@ -63,6 +63,7 @@ class _LineWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     if (line.isBlank) return SizedBox(height: fontSize * 0.6);
 
+    final cs = Theme.of(context).colorScheme;
     final chordStyle = Sanctuary.mono(
       fontSize: fontSize,
       color: Sanctuary.auroraCyan,
@@ -71,7 +72,7 @@ class _LineWidget extends StatelessWidget {
     );
     final lyricStyle = Sanctuary.mono(
       fontSize: fontSize,
-      color: Sanctuary.foreground,
+      color: cs.onSurface,
       fontWeight: FontWeight.w400,
       letterSpacing: 0,
     );

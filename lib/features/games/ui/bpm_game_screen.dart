@@ -85,20 +85,23 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
     final diff = _bpm > 0 ? _bpm - _target : 0;
     final within = diff.abs() <= 2 && _bpm > 0;
     final close = !within && diff.abs() <= 5 && _bpm > 0;
-    Color colour = Sanctuary.muted;
+    Color colour = cs.onSurfaceVariant;
     String hint = 'Tap to start';
     if (_bpm > 0) {
       if (within) {
-        colour = Sanctuary.success;
+        colour = successColor;
         hint = 'On the beat';
       } else if (close) {
         colour = Sanctuary.auroraAmber;
         hint = 'Drifting';
       } else {
-        colour = Sanctuary.destructive;
+        colour = cs.error;
         hint = diff > 0 ? 'Rushing' : 'Dragging';
       }
     }
@@ -122,7 +125,9 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TARGET BPM', style: Sanctuary.mono(fontSize: 10)),
+                Text('TARGET BPM',
+                    style: Sanctuary.mono(
+                        fontSize: 10, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 6,
@@ -137,12 +142,14 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                             horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: selected
-                              ? Sanctuary.auroraCyan.withValues(alpha: 0.15)
-                              : Sanctuary.glass1,
+                              ? cs.secondary.withValues(alpha: 0.15)
+                              : (isDark
+                                  ? Sanctuary.glass1
+                                  : Sanctuary.lightGlass1),
                           border: Border.all(
                               color: selected
-                                  ? Sanctuary.auroraCyan.withValues(alpha: 0.5)
-                                  : Sanctuary.hairline),
+                                  ? cs.secondary.withValues(alpha: 0.5)
+                                  : cs.outlineVariant),
                           borderRadius:
                               BorderRadius.circular(Sanctuary.radiusMd),
                         ),
@@ -151,8 +158,8 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                           style: Sanctuary.mono(
                               fontSize: 11,
                               color: selected
-                                  ? Sanctuary.auroraCyan
-                                  : Sanctuary.muted),
+                                  ? cs.secondary
+                                  : cs.onSurfaceVariant),
                         ),
                       ),
                     );
@@ -169,7 +176,7 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                         decoration: const InputDecoration(isDense: true),
                         style: Sanctuary.mono(
                           fontSize: 14,
-                          color: Sanctuary.foreground,
+                          color: cs.onSurface,
                           letterSpacing: 0,
                         ),
                         onSubmitted: (v) {
@@ -181,7 +188,9 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Text('custom', style: Sanctuary.mono(fontSize: 11)),
+                    Text('custom',
+                        style: Sanctuary.mono(
+                            fontSize: 11, color: cs.onSurfaceVariant)),
                   ],
                 ),
               ],
@@ -199,7 +208,9 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('YOUR TEMPO', style: Sanctuary.mono(fontSize: 10)),
+                        Text('YOUR TEMPO',
+                            style: Sanctuary.mono(
+                                fontSize: 10, color: cs.onSurfaceVariant)),
                         const SizedBox(height: 2),
                         Text(
                           _bpm > 0 ? '$_bpm' : '—',
@@ -217,7 +228,9 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('DELTA', style: Sanctuary.mono(fontSize: 10)),
+                        Text('DELTA',
+                            style: Sanctuary.mono(
+                                fontSize: 10, color: cs.onSurfaceVariant)),
                         const SizedBox(height: 2),
                         Text(
                           _bpm > 0
@@ -230,7 +243,7 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                         ),
                         Text(hint,
                             style: Sanctuary.mono(
-                                fontSize: 11, color: Sanctuary.muted)),
+                                fontSize: 11, color: cs.onSurfaceVariant)),
                       ],
                     ),
                   ],
@@ -256,7 +269,7 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                         border: Border.all(
                           color: _flash
                               ? Sanctuary.auroraCyan.withValues(alpha: 0.7)
-                              : Sanctuary.hairline,
+                              : cs.outlineVariant,
                           width: _flash ? 2 : 1,
                         ),
                         borderRadius:
@@ -269,10 +282,11 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                               style: Sanctuary.display(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
-                                  color: Sanctuary.foreground)),
+                                  color: cs.onSurface)),
                           const SizedBox(height: 4),
                           Text('$_taps tap${_taps == 1 ? "" : "s"}',
-                              style: Sanctuary.mono(fontSize: 10)),
+                              style: Sanctuary.mono(
+                                  fontSize: 10, color: cs.onSurfaceVariant)),
                         ],
                       ),
                     ),
@@ -284,8 +298,8 @@ class _BpmGameScreenState extends State<BpmGameScreen> {
                     Expanded(
                       child: Text(
                         '~4 taps before the reading stabilises. Pause 2 sec to reset.',
-                        style: const TextStyle(
-                            color: Sanctuary.muted, fontSize: 11),
+                        style: TextStyle(
+                            color: cs.onSurfaceVariant, fontSize: 11),
                       ),
                     ),
                     TextButton.icon(

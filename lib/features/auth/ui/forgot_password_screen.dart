@@ -48,6 +48,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -75,10 +76,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     style: Sanctuary.display(fontSize: 22),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
+                  Text(
                     'We\'ll email a reset link. Open it on this device or in '
                     'the web app to set a new password.',
-                    style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -98,8 +99,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           const SizedBox(height: 12),
                           Text(
                             _error!,
-                            style: const TextStyle(
-                              color: Sanctuary.destructive,
+                            style: TextStyle(
+                              color: cs.error,
                               fontSize: 13,
                             ),
                           ),
@@ -109,11 +110,11 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Sanctuary.auroraCyan.withValues(
+                              color: cs.secondary.withValues(
                                 alpha: 0.1,
                               ),
                               border: Border.all(
-                                color: Sanctuary.auroraCyan.withValues(
+                                color: cs.secondary.withValues(
                                   alpha: 0.4,
                                 ),
                               ),
@@ -121,10 +122,10 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                 Sanctuary.radiusMd,
                               ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'Reset link sent. Check your inbox (and spam).',
                               style: TextStyle(
-                                color: Sanctuary.auroraCyan,
+                                color: cs.secondary,
                                 fontSize: 13,
                               ),
                             ),
@@ -148,9 +149,9 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                           const SizedBox(height: 8),
                           TextButton(
                             onPressed: () => context.go('/login'),
-                            child: const Text(
+                            child: Text(
                               'Back to sign in',
-                              style: TextStyle(color: Sanctuary.muted),
+                              style: TextStyle(color: cs.onSurfaceVariant),
                             ),
                           ),
                         ],

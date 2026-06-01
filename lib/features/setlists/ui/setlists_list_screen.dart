@@ -14,6 +14,7 @@ class SetlistsListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final setlists = ref.watch(upcomingSetlistsStreamProvider);
     final past = ref.watch(pastSetlistsStreamProvider).valueOrNull ??
         const <SetlistRow>[];
@@ -30,8 +31,8 @@ class SetlistsListScreen extends ConsumerWidget {
       ),
       floatingActionButton: isLeader
           ? FloatingActionButton.extended(
-              backgroundColor: Sanctuary.auroraCyan,
-              foregroundColor: Sanctuary.ink0,
+              backgroundColor: cs.secondary,
+              foregroundColor: cs.onSecondary,
               onPressed: () => context.push('/setlists/new'),
               icon: const Icon(Icons.add),
               label: const Text('New'),
@@ -42,13 +43,13 @@ class SetlistsListScreen extends ConsumerWidget {
         error: (e, _) => Center(
           child: Text(
             'Failed to load setlists.\n$e',
-            style: const TextStyle(color: Sanctuary.muted),
+            style: TextStyle(color: cs.onSurfaceVariant),
           ),
         ),
         data: (list) {
           final hasAny = list.isNotEmpty || past.isNotEmpty;
           return RefreshIndicator(
-            color: Sanctuary.auroraCyan,
+            color: cs.secondary,
             onRefresh: () => ref.read(syncServiceProvider).syncAll(),
             child: !hasAny
                 ? ListView(
@@ -78,7 +79,7 @@ class SetlistsListScreen extends ConsumerWidget {
                             'PAST',
                             style: Sanctuary.mono(
                               fontSize: 11,
-                              color: Sanctuary.muted,
+                              color: cs.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -103,6 +104,7 @@ class _SetlistCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final date = setlist.serviceDate;
     return Material(
       color: Colors.transparent,
@@ -116,9 +118,9 @@ class _SetlistCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.calendar_today_outlined,
-                    color: Sanctuary.auroraViolet,
+                    color: cs.primary,
                     size: 14,
                   ),
                   const SizedBox(width: 6),
@@ -126,7 +128,7 @@ class _SetlistCard extends StatelessWidget {
                     DateFormat('EEE').format(date).toUpperCase(),
                     style: Sanctuary.mono(
                       fontSize: 11,
-                      color: Sanctuary.auroraViolet,
+                      color: cs.primary,
                     ),
                   ),
                 ],
@@ -140,7 +142,7 @@ class _SetlistCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   setlist.theme!,
-                  style: const TextStyle(color: Sanctuary.muted, fontSize: 13),
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                 ),
               ],
             ],

@@ -46,6 +46,7 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final prayers = ref.watch(prayerRequestsStreamProvider);
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -65,10 +66,10 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
                   child: Text('Failed to load.\n$e',
-                      style: const TextStyle(color: Sanctuary.muted)),
+                      style: TextStyle(color: cs.onSurfaceVariant)),
                 ),
                 data: (list) => RefreshIndicator(
-                  color: Sanctuary.auroraCyan,
+                  color: cs.secondary,
                   onRefresh: () => ref.read(syncServiceProvider).syncAll(),
                   child: list.isEmpty
                       ? ListView(
@@ -118,14 +119,13 @@ class _PrayerScreenState extends ConsumerState<PrayerScreen> {
                     const SizedBox(width: 8),
                     IconButton(
                       icon: _posting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 18,
                               height: 18,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Sanctuary.auroraCyan),
+                                  strokeWidth: 2, color: cs.secondary),
                             )
-                          : const Icon(Icons.send,
-                              color: Sanctuary.auroraCyan),
+                          : Icon(Icons.send, color: cs.secondary),
                       onPressed: _posting ? null : _submit,
                     ),
                   ],
@@ -145,6 +145,9 @@ class _Card extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
     final author = (p.authorName ?? '').isEmpty ? 'Anonymous' : p.authorName!;
     final isLeader = ref.watch(isLeaderProvider);
     final isAuthor = supabase.auth.currentUser?.id == p.authorId;
@@ -161,29 +164,29 @@ class _Card extends ConsumerWidget {
                       fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(width: 8),
               Text(DateFormat.MMMd().add_jm().format(p.createdAt),
-                  style: const TextStyle(color: Sanctuary.muted, fontSize: 11)),
+                  style: TextStyle(color: cs.onSurfaceVariant, fontSize: 11)),
               const Spacer(),
               if (p.isAnswered)
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: Sanctuary.success.withValues(alpha: 0.15),
+                    color: successColor.withValues(alpha: 0.15),
                     border: Border.all(
-                        color: Sanctuary.success.withValues(alpha: 0.4)),
+                        color: successColor.withValues(alpha: 0.4)),
                     borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
                   ),
                   child: Text('ANSWERED',
                       style: Sanctuary.mono(
                           fontSize: 9,
-                          color: Sanctuary.success,
+                          color: successColor,
                           fontWeight: FontWeight.w700)),
                 ),
               if (canManage)
                 PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_horiz,
-                      size: 18, color: Sanctuary.muted),
-                  color: Sanctuary.ink2,
+                  icon: Icon(Icons.more_horiz,
+                      size: 18, color: cs.onSurfaceVariant),
+                  color: cs.surfaceContainer,
                   onSelected: (v) async {
                     if (v == 'answered') {
                       await ref
@@ -193,7 +196,7 @@ class _Card extends ConsumerWidget {
                       final ok = await showDialog<bool>(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          backgroundColor: Sanctuary.ink2,
+                          backgroundColor: cs.surfaceContainer,
                           title: const Text('Delete request?'),
                           content: const Text('This can\'t be undone.'),
                           actions: [
@@ -203,7 +206,7 @@ class _Card extends ConsumerWidget {
                             ),
                             FilledButton(
                               style: FilledButton.styleFrom(
-                                backgroundColor: Sanctuary.destructive,
+                                backgroundColor: cs.error,
                               ),
                               onPressed: () => Navigator.pop(ctx, true),
                               child: const Text('Delete'),
@@ -229,14 +232,13 @@ class _Card extends ConsumerWidget {
                         Text(p.isAnswered ? 'Mark unanswered' : 'Mark answered'),
                       ]),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(children: [
-                        Icon(Icons.delete_outline,
-                            color: Sanctuary.destructive),
-                        SizedBox(width: 8),
+                        Icon(Icons.delete_outline, color: cs.error),
+                        const SizedBox(width: 8),
                         Text('Delete',
-                            style: TextStyle(color: Sanctuary.destructive)),
+                            style: TextStyle(color: cs.error)),
                       ]),
                     ),
                   ],
@@ -245,8 +247,8 @@ class _Card extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(p.body,
-              style: const TextStyle(
-                  color: Sanctuary.foreground, fontSize: 14, height: 1.5)),
+              style: TextStyle(
+                  color: cs.onSurface, fontSize: 14, height: 1.5)),
         ],
       ),
     );

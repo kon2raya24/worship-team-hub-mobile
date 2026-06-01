@@ -118,6 +118,9 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
     final q = _questions[_index];
     final isLast = _index == _questions.length - 1;
     final finished = _picked != null && isLast;
@@ -140,9 +143,12 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
           Row(
             children: [
               Text('Question ${_index + 1} / $_rounds',
-                  style: Sanctuary.mono(fontSize: 10)),
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
               const Spacer(),
-              Text('Score', style: Sanctuary.mono(fontSize: 10)),
+              Text('Score',
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
               const SizedBox(width: 6),
               Text(
                 '$_score / $_rounds',
@@ -159,7 +165,9 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('QUESTION', style: Sanctuary.mono(fontSize: 10)),
+                Text('QUESTION',
+                    style: Sanctuary.mono(
+                        fontSize: 10, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 6),
                 Text(
                   q.prompt,
@@ -169,15 +177,15 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
                 ..._options[_index].map((opt) {
                   final isPick = _picked == opt;
                   final isRight = _picked != null && opt == q.correctLabel;
-                  Color bg = Sanctuary.glass1;
-                  Color border = Sanctuary.hairline;
+                  Color bg = isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1;
+                  Color border = cs.outlineVariant;
                   if (_picked != null) {
                     if (isRight) {
-                      bg = Sanctuary.success.withValues(alpha: 0.15);
-                      border = Sanctuary.success.withValues(alpha: 0.5);
+                      bg = successColor.withValues(alpha: 0.15);
+                      border = successColor.withValues(alpha: 0.5);
                     } else if (isPick) {
-                      bg = Sanctuary.destructive.withValues(alpha: 0.15);
-                      border = Sanctuary.destructive.withValues(alpha: 0.5);
+                      bg = cs.error.withValues(alpha: 0.15);
+                      border = cs.error.withValues(alpha: 0.5);
                     }
                   }
                   return Padding(
@@ -201,14 +209,13 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
                               Text(opt,
                                   style: Sanctuary.mono(
                                       fontSize: 15,
-                                      color: Sanctuary.foreground,
+                                      color: cs.onSurface,
                                       letterSpacing: 0)),
                               const Spacer(),
                               if (_picked != null && isRight)
-                                const Icon(Icons.check, size: 16, color: Sanctuary.success),
+                                Icon(Icons.check, size: 16, color: successColor),
                               if (_picked != null && isPick && !isRight)
-                                const Icon(Icons.close,
-                                    size: 16, color: Sanctuary.destructive),
+                                Icon(Icons.close, size: 16, color: cs.error),
                             ],
                           ),
                         ),
@@ -222,9 +229,7 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
                       Text(
                         isCorrect ? 'Correct' : 'Answer: ${q.correctLabel}',
                         style: TextStyle(
-                          color: isCorrect
-                              ? Sanctuary.success
-                              : Sanctuary.destructive,
+                          color: isCorrect ? successColor : cs.error,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -237,7 +242,9 @@ class _KeysGameScreenState extends State<KeysGameScreen> {
                   ),
                 if (finished) ...[
                   const SizedBox(height: 8),
-                  Text('DONE', style: Sanctuary.mono(fontSize: 10)),
+                  Text('DONE',
+                      style: Sanctuary.mono(
+                          fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   Text(
                     '$_score / $_rounds',

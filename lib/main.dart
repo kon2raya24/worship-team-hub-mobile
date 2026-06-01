@@ -2,10 +2,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'core/env.dart';
+import 'features/auth/biometric_service.dart' show sharedPrefsProvider;
 
 /// Background isolate handler. Notification messages are displayed by the OS
 /// automatically, so there's nothing to do here — but FCM requires a
@@ -30,5 +32,14 @@ Future<void> main() async {
     debug: false,
   );
 
-  runApp(const ProviderScope(child: WorshipApp()));
+  // Preload prefs so the saved theme (and biometric settings) resolve
+  // synchronously on the first frame instead of flashing the default.
+  final prefs = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [sharedPrefsProvider.overrideWith((ref) => prefs)],
+      child: const WorshipApp(),
+    ),
+  );
 }

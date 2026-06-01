@@ -61,6 +61,7 @@ class _DevotionComposeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -106,8 +107,7 @@ class _DevotionComposeScreenState
                   if (_error != null) ...[
                     const SizedBox(height: 10),
                     Text(_error!,
-                        style: const TextStyle(
-                            color: Sanctuary.destructive, fontSize: 13)),
+                        style: TextStyle(color: cs.error, fontSize: 13)),
                   ],
                   const SizedBox(height: 14),
                   FilledButton(

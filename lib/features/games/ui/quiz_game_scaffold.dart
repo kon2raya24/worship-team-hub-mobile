@@ -95,6 +95,9 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor = isDark ? Sanctuary.success : Sanctuary.lightSuccess;
     final q = _questions[_index];
     final isLast = _index == _questions.length - 1;
     final finished = _picked != null && isLast;
@@ -118,9 +121,12 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
           Row(
             children: [
               Text('Question ${_index + 1} / $total',
-                  style: Sanctuary.mono(fontSize: 10)),
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
               const Spacer(),
-              Text('Score', style: Sanctuary.mono(fontSize: 10)),
+              Text('Score',
+                  style: Sanctuary.mono(
+                      fontSize: 10, color: cs.onSurfaceVariant)),
               const SizedBox(width: 6),
               Text(
                 '$_score / $total',
@@ -137,7 +143,9 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('QUESTION', style: Sanctuary.mono(fontSize: 10)),
+                Text('QUESTION',
+                    style: Sanctuary.mono(
+                        fontSize: 10, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 6),
                 DefaultTextStyle.merge(
                   style: Sanctuary.display(
@@ -150,15 +158,15 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
                 ...q.options.map((opt) {
                   final isPick = _picked == opt;
                   final isRight = _picked != null && opt == q.correctLabel;
-                  Color bg = Sanctuary.glass1;
-                  Color border = Sanctuary.hairline;
+                  Color bg = isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1;
+                  Color border = cs.outlineVariant;
                   if (_picked != null) {
                     if (isRight) {
-                      bg = Sanctuary.success.withValues(alpha: 0.15);
-                      border = Sanctuary.success.withValues(alpha: 0.5);
+                      bg = successColor.withValues(alpha: 0.15);
+                      border = successColor.withValues(alpha: 0.5);
                     } else if (isPick) {
-                      bg = Sanctuary.destructive.withValues(alpha: 0.15);
-                      border = Sanctuary.destructive.withValues(alpha: 0.5);
+                      bg = cs.error.withValues(alpha: 0.15);
+                      border = cs.error.withValues(alpha: 0.5);
                     }
                   }
                   final display = q.optionDisplay != null
@@ -187,17 +195,16 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
                                   display,
                                   style: Sanctuary.mono(
                                     fontSize: 15,
-                                    color: Sanctuary.foreground,
+                                    color: cs.onSurface,
                                     letterSpacing: 0,
                                   ),
                                 ),
                               ),
                               if (_picked != null && isRight)
-                                const Icon(Icons.check,
-                                    size: 16, color: Sanctuary.success),
+                                Icon(Icons.check,
+                                    size: 16, color: successColor),
                               if (_picked != null && isPick && !isRight)
-                                const Icon(Icons.close,
-                                    size: 16, color: Sanctuary.destructive),
+                                Icon(Icons.close, size: 16, color: cs.error),
                             ],
                           ),
                         ),
@@ -214,9 +221,7 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
                               ? 'Correct'
                               : 'Answer: ${q.optionDisplay != null ? q.optionDisplay!(q.correctLabel) : q.correctLabel}',
                           style: TextStyle(
-                            color: isCorrect
-                                ? Sanctuary.success
-                                : Sanctuary.destructive,
+                            color: isCorrect ? successColor : cs.error,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -229,7 +234,9 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
                   ),
                 if (finished) ...[
                   const SizedBox(height: 8),
-                  Text('DONE', style: Sanctuary.mono(fontSize: 10)),
+                  Text('DONE',
+                      style: Sanctuary.mono(
+                          fontSize: 10, color: cs.onSurfaceVariant)),
                   const SizedBox(height: 4),
                   Text(
                     '$_score / $total',
@@ -239,8 +246,8 @@ class _QuizGameScaffoldState extends State<QuizGameScaffold> {
                     const SizedBox(height: 6),
                     Text(
                       widget.finishedMessage!(_score, total),
-                      style: const TextStyle(
-                        color: Sanctuary.muted,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
                         fontSize: 13,
                         height: 1.5,
                       ),

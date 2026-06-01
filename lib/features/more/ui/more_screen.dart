@@ -56,10 +56,11 @@ class MoreScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        backgroundColor: Sanctuary.ink1.withValues(alpha: 0.85),
+        backgroundColor: cs.surfaceContainer.withValues(alpha: 0.85),
         surfaceTintColor: Colors.transparent,
         scrolledUnderElevation: 0,
         title: const Text('More'),
@@ -97,6 +98,8 @@ class _MoreCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -105,7 +108,7 @@ class _MoreCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
-            color: Sanctuary.glass1,
+            color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
             border: Border.all(color: item.accent.withValues(alpha: 0.22)),
             borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
           ),
@@ -130,8 +133,8 @@ class _MoreCard extends StatelessWidget {
                   children: [
                     Text(
                       item.title,
-                      style: const TextStyle(
-                        color: Sanctuary.foreground,
+                      style: TextStyle(
+                        color: cs.onSurface,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -139,16 +142,16 @@ class _MoreCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       item.subtitle,
-                      style: const TextStyle(
-                        color: Sanctuary.muted,
+                      style: TextStyle(
+                        color: cs.onSurfaceVariant,
                         fontSize: 11.5,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  size: 20, color: Sanctuary.muted),
+              Icon(Icons.chevron_right,
+                  size: 20, color: cs.onSurfaceVariant),
             ],
           ),
         ),

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Sanctuary OS — dark glass + aurora gradients, ported from the web app
+/// Sanctuary OS — aurora gradients + glass panels, ported from the web app
 /// (app/globals.css). Single source of truth for colors, radii, fonts.
+///
+/// Two palettes: the dark ("night") consts below mirror `.dark` in globals.css,
+/// and the `light*` consts mirror `:root`. [buildTheme] takes a [Brightness] so
+/// the app can offer Light / Dark / System. Screens should prefer
+/// `Theme.of(context).colorScheme` over the raw consts so they follow the theme.
 class Sanctuary {
+  // ── Dark ("night") palette ────────────────────────────────────────────
   // Ink / surface
   static const ink0 = Color(0xFF04060E);
   static const ink1 = Color(0xFF070A17);
@@ -30,46 +36,79 @@ class Sanctuary {
   static const success = Color(0xFF8EFF6A);
   static const destructive = Color(0xFFFF5566);
 
+  // ── Light ("day") palette — mirrors :root in app/globals.css ──────────
+  static const lightInk0 = Color(0xFFF6F7FB); // scaffold background
+  static const lightInk1 = Color(0xFFFFFFFF); // raised surfaces / app bar
+  static const lightInk2 = Color(0xFFEEF0F7);
+  static const lightForeground = Color(0xFF0B1024);
+  static const lightMuted = Color(0xFF5A6178);
+  static const lightGlass1 = Color(0x0A111838); // rgba(17,24,56,0.04)
+  static const lightHairline = Color(0x1A111838); // rgba(17,24,56,0.10)
+  static const lightHairlineStrong = Color(0x2E111838); // ~rgba(17,24,56,0.18)
+  static const lightViolet = Color(0xFF7C3AED);
+  static const lightCyan = Color(0xFF0E9BB8);
+  static const lightMagenta = Color(0xFFD81B75);
+  static const lightSuccess = Color(0xFF16A34A);
+  static const lightDestructive = Color(0xFFE11D48);
+
   // Radii (matches --radius: 0.5rem)
   static const radiusSm = 6.0;
   static const radiusMd = 8.0;
   static const radiusLg = 10.0;
 
-  static ThemeData buildTheme() {
-    final base = ThemeData(brightness: Brightness.dark, useMaterial3: true);
+  static ThemeData buildTheme([Brightness brightness = Brightness.dark]) {
+    final isDark = brightness == Brightness.dark;
+    final base = ThemeData(brightness: brightness, useMaterial3: true);
+
+    final fg = isDark ? foreground : lightForeground;
+    final mutedColor = isDark ? muted : lightMuted;
+    final surface = isDark ? ink0 : lightInk0;
+    final glassFill = isDark ? glass1 : lightGlass1;
+    final line = isDark ? hairline : lightHairline;
+    final lineStrong = isDark ? hairlineStrong : lightHairlineStrong;
+    final primary = isDark ? auroraViolet : lightViolet;
+    final secondary = isDark ? auroraCyan : lightCyan;
+    final errorColor = isDark ? destructive : lightDestructive;
+
     final textTheme = GoogleFonts.interTextTheme(base.textTheme).apply(
-      bodyColor: foreground,
-      displayColor: foreground,
+      bodyColor: fg,
+      displayColor: fg,
+    );
+
+    final colorScheme = base.colorScheme.copyWith(
+      surface: surface,
+      onSurface: fg,
+      onSurfaceVariant: mutedColor,
+      primary: primary,
+      onPrimary: Colors.white,
+      secondary: secondary,
+      onSecondary: isDark ? ink0 : Colors.white,
+      error: errorColor,
+      onError: Colors.white,
+      outline: lineStrong,
+      outlineVariant: line,
     );
 
     return base.copyWith(
-      scaffoldBackgroundColor: ink0,
-      canvasColor: ink0,
-      colorScheme: const ColorScheme.dark(
-        surface: ink0,
-        primary: auroraViolet,
-        onPrimary: Colors.white,
-        secondary: auroraCyan,
-        onSecondary: ink0,
-        error: destructive,
-        onSurface: foreground,
-      ),
+      scaffoldBackgroundColor: surface,
+      canvasColor: surface,
+      colorScheme: colorScheme,
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
-        backgroundColor: ink1.withValues(alpha: 0.75),
+        backgroundColor: (isDark ? ink1 : lightInk1).withValues(alpha: 0.75),
         elevation: 0,
         scrolledUnderElevation: 0,
-        foregroundColor: foreground,
+        foregroundColor: fg,
         titleTextStyle: GoogleFonts.spaceGrotesk(
           fontSize: 16,
           fontWeight: FontWeight.w600,
           letterSpacing: -0.02 * 16,
-          color: foreground,
+          color: fg,
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          backgroundColor: auroraViolet,
+          backgroundColor: primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
@@ -80,8 +119,8 @@ class Sanctuary {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: foreground,
-          side: const BorderSide(color: hairline),
+          foregroundColor: fg,
+          side: BorderSide(color: line),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMd),
           ),
@@ -90,29 +129,29 @@ class Sanctuary {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: glass1,
-        hintStyle: const TextStyle(color: muted),
+        fillColor: glassFill,
+        hintStyle: TextStyle(color: mutedColor),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: hairline),
+          borderSide: BorderSide(color: line),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: const BorderSide(color: hairline),
+          borderSide: BorderSide(color: line),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMd),
-          borderSide: BorderSide(color: auroraViolet.withValues(alpha: 0.55)),
+          borderSide: BorderSide(color: primary.withValues(alpha: 0.55)),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       ),
       cardTheme: CardThemeData(
-        color: glass1,
+        color: glassFill,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radiusLg),
-          side: const BorderSide(color: hairline),
+          side: BorderSide(color: line),
         ),
       ),
       // Consistent, subtle page transition for pushed routes (detail/compose)
@@ -128,10 +167,12 @@ class Sanctuary {
   }
 
   /// Display font (Space Grotesk) — use for headings and the brand mark.
+  /// Leave [color] null to inherit the theme's foreground (so headings follow
+  /// light/dark automatically); pass a color only to override.
   static TextStyle display({
     double fontSize = 24,
     FontWeight fontWeight = FontWeight.w600,
-    Color color = foreground,
+    Color? color,
   }) =>
       GoogleFonts.spaceGrotesk(
         fontSize: fontSize,
@@ -141,6 +182,8 @@ class Sanctuary {
       );
 
   /// Mono font (JetBrains Mono) — use for eyebrows, chord chips, code.
+  /// Defaults to the dark muted tone; pass `color: cs.onSurfaceVariant` from a
+  /// screen so the label stays readable in light mode too.
   static TextStyle mono({
     double fontSize = 10,
     FontWeight fontWeight = FontWeight.w500,
@@ -155,7 +198,8 @@ class Sanctuary {
       );
 }
 
-/// Aurora gradient background painted under the whole app.
+/// Aurora gradient background painted under the whole app. Follows the active
+/// brightness so light mode gets a soft, near-white wash instead of deep space.
 class AuroraBackground extends StatelessWidget {
   const AuroraBackground({super.key, required this.child});
 
@@ -163,13 +207,24 @@ class AuroraBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isDark
+        ? const [Color(0xFF060916), Color(0xFF04060E), Color(0xFF03050C)]
+        : const [Color(0xFFFBFBFF), Color(0xFFF4F6FC), Color(0xFFEEF1F9)];
+    final violet = (isDark ? Sanctuary.auroraViolet : Sanctuary.lightViolet)
+        .withValues(alpha: isDark ? 0.30 : 0.12);
+    final cyan = (isDark ? Sanctuary.auroraCyan : Sanctuary.lightCyan)
+        .withValues(alpha: isDark ? 0.22 : 0.10);
+    final magenta = (isDark ? Sanctuary.auroraMagenta : Sanctuary.lightMagenta)
+        .withValues(alpha: isDark ? 0.18 : 0.08);
+
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF060916), Color(0xFF04060E), Color(0xFF03050C)],
-          stops: [0, 0.6, 1],
+          colors: gradientColors,
+          stops: const [0, 0.6, 1],
         ),
       ),
       child: Stack(
@@ -177,26 +232,17 @@ class AuroraBackground extends StatelessWidget {
           Positioned(
             left: -120,
             top: -160,
-            child: _AuroraBlob(
-              color: Sanctuary.auroraViolet.withValues(alpha: 0.30),
-              size: 460,
-            ),
+            child: _AuroraBlob(color: violet, size: 460),
           ),
           Positioned(
             right: -120,
             top: 220,
-            child: _AuroraBlob(
-              color: Sanctuary.auroraCyan.withValues(alpha: 0.22),
-              size: 400,
-            ),
+            child: _AuroraBlob(color: cyan, size: 400),
           ),
           Positioned(
             left: 60,
             bottom: -120,
-            child: _AuroraBlob(
-              color: Sanctuary.auroraMagenta.withValues(alpha: 0.18),
-              size: 360,
-            ),
+            child: _AuroraBlob(color: magenta, size: 360),
           ),
           Positioned.fill(child: child),
         ],
@@ -228,7 +274,8 @@ class _AuroraBlob extends StatelessWidget {
   }
 }
 
-/// Glass panel — frosted, hairline-bordered card. Use sparingly.
+/// Glass panel — frosted, hairline-bordered card. Use sparingly. Follows the
+/// active brightness via the theme's colorScheme.
 class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
@@ -241,11 +288,12 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Sanctuary.glass1,
-        border: Border.all(color: Sanctuary.hairline),
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
       ),
       child: child,
@@ -262,16 +310,20 @@ class EmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
-    this.accent = Sanctuary.auroraViolet,
+    this.accent,
   });
 
   final IconData icon;
   final String title;
   final String? subtitle;
-  final Color accent;
+
+  /// Accent for the icon chip. Defaults to the theme's primary when null.
+  final Color? accent;
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final accentColor = accent ?? cs.primary;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32),
       child: Column(
@@ -282,22 +334,22 @@ class EmptyState extends StatelessWidget {
             height: 52,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.10),
-              border: Border.all(color: accent.withValues(alpha: 0.30)),
+              color: accentColor.withValues(alpha: 0.10),
+              border: Border.all(color: accentColor.withValues(alpha: 0.30)),
               borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
             ),
-            child: Icon(icon, size: 24, color: accent),
+            child: Icon(icon, size: 24, color: accentColor),
           ),
           const SizedBox(height: 14),
           Text(title,
               textAlign: TextAlign.center,
-              style: Sanctuary.display(fontSize: 16)),
+              style: Sanctuary.display(fontSize: 16, color: cs.onSurface)),
           if ((subtitle ?? '').isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                    color: Sanctuary.muted, fontSize: 13, height: 1.4)),
+                style: TextStyle(
+                    color: cs.onSurfaceVariant, fontSize: 13, height: 1.4)),
           ],
         ],
       ),

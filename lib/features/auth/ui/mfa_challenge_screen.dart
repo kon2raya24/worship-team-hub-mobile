@@ -85,6 +85,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
@@ -100,10 +101,10 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                   const SizedBox(height: 16),
                   Text('Two-factor', style: Sanctuary.display(fontSize: 24)),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'Enter the 6-digit code from your authenticator app.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Sanctuary.muted, fontSize: 13),
+                    style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13),
                   ),
                   const SizedBox(height: 24),
                   GlassCard(
@@ -118,7 +119,7 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                           textAlign: TextAlign.center,
                           style: Sanctuary.mono(
                               fontSize: 22,
-                              color: Sanctuary.foreground,
+                              color: cs.onSurface,
                               letterSpacing: 6),
                           decoration: const InputDecoration(
                             hintText: '123456',
@@ -129,8 +130,8 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                         if (_error != null) ...[
                           const SizedBox(height: 10),
                           Text(_error!,
-                              style: const TextStyle(
-                                  color: Sanctuary.destructive, fontSize: 13)),
+                              style: TextStyle(
+                                  color: cs.error, fontSize: 13)),
                         ],
                         const SizedBox(height: 12),
                         FilledButton(
@@ -151,9 +152,9 @@ class _MfaChallengeScreenState extends ConsumerState<MfaChallengeScreen> {
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: _busy ? null : _signOut,
-                    child: const Text('Sign out',
+                    child: Text('Sign out',
                         style: TextStyle(
-                            color: Sanctuary.muted, fontSize: 13)),
+                            color: cs.onSurfaceVariant, fontSize: 13)),
                   ),
                 ],
               ),

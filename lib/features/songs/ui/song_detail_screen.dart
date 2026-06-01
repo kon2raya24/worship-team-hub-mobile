@@ -28,6 +28,7 @@ class SongDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cs = Theme.of(context).colorScheme;
     final song = ref.watch(songByIdProvider(songId));
     final isLeader = ref.watch(isLeaderProvider);
     return Scaffold(
@@ -43,7 +44,7 @@ class SongDetailScreen extends ConsumerWidget {
           if (isLeader)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert, size: 20),
-              color: Sanctuary.ink2,
+              color: cs.surfaceContainer,
               onSelected: (v) async {
                 if (v == 'edit') {
                   context.push('/songs/$songId/edit');
@@ -65,7 +66,7 @@ class SongDetailScreen extends ConsumerWidget {
                   final ok = await showDialog<bool>(
                     context: context,
                     builder: (ctx) => AlertDialog(
-                      backgroundColor: Sanctuary.ink2,
+                      backgroundColor: cs.surfaceContainer,
                       title: const Text('Delete song?'),
                       content: const Text(
                         'This removes the song for everyone — including '
@@ -78,7 +79,7 @@ class SongDetailScreen extends ConsumerWidget {
                         ),
                         FilledButton(
                           style: FilledButton.styleFrom(
-                            backgroundColor: Sanctuary.destructive,
+                            backgroundColor: cs.error,
                           ),
                           onPressed: () => Navigator.pop(ctx, true),
                           child: const Text('Delete'),
@@ -100,8 +101,8 @@ class SongDetailScreen extends ConsumerWidget {
                   }
                 }
               },
-              itemBuilder: (_) => const [
-                PopupMenuItem(
+              itemBuilder: (_) => [
+                const PopupMenuItem(
                   value: 'edit',
                   child: Row(children: [
                     Icon(Icons.edit_outlined),
@@ -109,7 +110,7 @@ class SongDetailScreen extends ConsumerWidget {
                     Text('Edit'),
                   ]),
                 ),
-                PopupMenuItem(
+                const PopupMenuItem(
                   value: 'share',
                   child: Row(children: [
                     Icon(Icons.ios_share),
@@ -120,10 +121,9 @@ class SongDetailScreen extends ConsumerWidget {
                 PopupMenuItem(
                   value: 'delete',
                   child: Row(children: [
-                    Icon(Icons.delete_outline, color: Sanctuary.destructive),
-                    SizedBox(width: 8),
-                    Text('Delete',
-                        style: TextStyle(color: Sanctuary.destructive)),
+                    Icon(Icons.delete_outline, color: cs.error),
+                    const SizedBox(width: 8),
+                    Text('Delete', style: TextStyle(color: cs.error)),
                   ]),
                 ),
               ],
@@ -135,18 +135,18 @@ class SongDetailScreen extends ConsumerWidget {
         error: (e, _) => Center(
           child: Text(
             'Failed to load song.\n$e',
-            style: const TextStyle(color: Sanctuary.muted),
+            style: TextStyle(color: cs.onSurfaceVariant),
           ),
         ),
         data: (s) {
           if (s == null) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
                 child: Text(
                   'Song not found in local cache.\nPull to sync from the home screen.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Sanctuary.muted),
+                  style: TextStyle(color: cs.onSurfaceVariant),
                 ),
               ),
             );
@@ -287,6 +287,7 @@ class _SongBodyState extends State<_SongBody> {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     final body = widget.chordproBody.trim();
     // Capo lowers the chord NAMES on the chart by the capo position so the
     // player can use the same shapes; effective render offset is
@@ -308,7 +309,7 @@ class _SongBodyState extends State<_SongBody> {
               const SizedBox(height: 4),
               Text(
                 widget.artist!,
-                style: const TextStyle(color: Sanctuary.muted, fontSize: 14),
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 14),
               ),
             ],
             const SizedBox(height: 16),
@@ -352,9 +353,9 @@ class _SongBodyState extends State<_SongBody> {
             GlassCard(
               padding: const EdgeInsets.all(18),
               child: parsed == null
-                  ? const Text(
+                  ? Text(
                       'No chord chart yet.',
-                      style: TextStyle(color: Sanctuary.muted),
+                      style: TextStyle(color: cs.onSurfaceVariant),
                     )
                   : ChordViewer(song: parsed, fontSize: _fontSize),
             ),
@@ -411,6 +412,7 @@ class _Controls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Column(
@@ -428,7 +430,7 @@ class _Controls extends StatelessWidget {
                               originalKey != currentKey)
                           ? '${originalKey!} → ${currentKey!}'
                           : currentKey!,
-                      accent: Sanctuary.auroraViolet,
+                      accent: cs.primary,
                     ),
                   ),
                 )
@@ -446,7 +448,7 @@ class _Controls extends StatelessWidget {
               _MiniPill(
                 label: 'CAPO',
                 value: '$capo',
-                accent: Sanctuary.auroraCyan,
+                accent: cs.secondary,
               ),
               const SizedBox(width: 4),
               _IconBtn(icon: Icons.remove, onTap: onCapoDown),
@@ -524,17 +526,18 @@ class _SpeedBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return GlassCard(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Icon(Icons.speed, size: 18, color: Sanctuary.auroraCyan),
+          Icon(Icons.speed, size: 18, color: cs.secondary),
           const SizedBox(width: 8),
           Text(
             speed.toStringAsFixed(1),
             style: Sanctuary.mono(
               fontSize: 12,
-              color: Sanctuary.auroraCyan,
+              color: cs.secondary,
               fontWeight: FontWeight.w600,
               letterSpacing: 0,
             ),
@@ -542,10 +545,10 @@ class _SpeedBar extends StatelessWidget {
           Expanded(
             child: SliderTheme(
               data: SliderTheme.of(context).copyWith(
-                activeTrackColor: Sanctuary.auroraCyan,
-                inactiveTrackColor: Sanctuary.hairline,
-                thumbColor: Sanctuary.auroraCyan,
-                overlayColor: Sanctuary.auroraCyan.withValues(alpha: 0.2),
+                activeTrackColor: cs.secondary,
+                inactiveTrackColor: cs.outlineVariant,
+                thumbColor: cs.secondary,
+                overlayColor: cs.secondary.withValues(alpha: 0.2),
                 trackHeight: 2,
               ),
               child: Slider(
@@ -614,7 +617,9 @@ class _IconBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = highlighted ? Sanctuary.auroraCyan : null;
+    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = highlighted ? cs.secondary : null;
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -625,13 +630,14 @@ class _IconBtn extends StatelessWidget {
           height: 32,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: accent?.withValues(alpha: 0.15) ?? Sanctuary.glass1,
+            color: accent?.withValues(alpha: 0.15) ??
+                (isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1),
             border: Border.all(
-              color: accent?.withValues(alpha: 0.4) ?? Sanctuary.hairline,
+              color: accent?.withValues(alpha: 0.4) ?? cs.outlineVariant,
             ),
             borderRadius: BorderRadius.circular(Sanctuary.radiusSm),
           ),
-          child: Icon(icon, size: 16, color: accent ?? Sanctuary.foreground),
+          child: Icon(icon, size: 16, color: accent ?? cs.onSurface),
         ),
       ),
     );
