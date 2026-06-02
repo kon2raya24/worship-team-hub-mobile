@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -26,6 +28,14 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
   bool _compare = false;
   String _scaleBId = 'natural-minor';
   int? _chordDegree; // selected diatonic chord (lights its tones); null = none
+  // Edit mode (Phase 5).
+  bool _editMode = false;
+  bool _slideTool = false; // false = hide/add notes, true = draw slides
+  bool _rotateLabels = false;
+  final Set<String> _hidden = {};
+  final Set<String> _added = {};
+  final List<List<String>> _slides = [];
+  String? _slidePending; // first cell tapped in slide tool
 
   ScaleDef get _scale =>
       kScales.firstWhere((s) => s.id == _scaleId, orElse: () => kScales.first);
@@ -38,6 +48,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final scale = _scale;
     final scaleB = _scaleB;
+    final useFlats = rootUsesFlats(_root);
     final notes = buildScaleFretboard(_root, scale);
     final names = scaleNotes(_root, scale);
     final compareNotes = _compare ? buildComparison(_root, scale, scaleB) : null;
@@ -179,28 +190,15 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
               children: [
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: CustomPaint(
-                    size: const Size(_FretboardPainter.totalW, _FretboardPainter.totalH),
-                    painter: _FretboardPainter(
-                      notes: notes,
-                      compareNotes: compareNotes,
-                      label: _label,
-                      activeKeys: activeKeys,
-                      signature:
-                          '$_root|$_scaleId|${_label.index}|${_pattern.index}|$idx|$hasPositions|'
-                          '$_compare|$_scaleBId|${_chordDegree ?? -1}|$isDark',
-                      boardFill: cs.onSurface.withValues(alpha: 0.04),
-                      line: cs.outlineVariant,
-                      nut: cs.onSurfaceVariant.withValues(alpha: 0.6),
-                      inlay: cs.onSurfaceVariant.withValues(alpha: 0.22),
-                      fretNum: cs.onSurfaceVariant,
-                      rootFill: cs.primary,
-                      rootText: cs.onPrimary,
-                      noteFill: cs.secondary,
-                      noteText: cs.onSecondary,
-                      dotStroke: cs.surface,
-                      amber: Sanctuary.auroraAmber,
-                      ring: cs.onSurface.withValues(alpha: 0.5),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (_editMode && !_compare)
+                        ? (d) => _onBoardTap(d.localPosition)
+                        : null,
+                    child: CustomPaint(
+                      size: const Size(_FretboardPainter.totalW, _FretboardPainter.totalH),
+                      painter: _statePainter(cs, isDark, useFlats, notes, compareNotes,
+                          activeKeys, dotsOnly: false),
                     ),
                   ),
                 ),
@@ -213,6 +211,59 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          if (!_compare) ...[
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                _editChip(cs, isDark, 'Edit', Icons.edit_outlined, _editMode, () {
+                  setState(() {
+                    _editMode = !_editMode;
+                    _slidePending = null;
+                  });
+                }),
+                if (_editMode) ...[
+                  _editChip(cs, isDark, 'Notes', Icons.touch_app_outlined, !_slideTool, () {
+                    setState(() {
+                      _slideTool = false;
+                      _slidePending = null;
+                    });
+                  }),
+                  _editChip(cs, isDark, 'Slides', Icons.timeline, _slideTool, () {
+                    setState(() {
+                      _slideTool = true;
+                      _slidePending = null;
+                    });
+                  }),
+                  _editChip(cs, isDark, 'Flip labels', Icons.flip, _rotateLabels, () {
+                    setState(() => _rotateLabels = !_rotateLabels);
+                  }),
+                  if (_hidden.isNotEmpty || _added.isNotEmpty || _slides.isNotEmpty)
+                    _editChip(cs, isDark, 'Reset', Icons.refresh, false, () {
+                      setState(() {
+                        _hidden.clear();
+                        _added.clear();
+                        _slides.clear();
+                        _slidePending = null;
+                      });
+                    }),
+                ],
+              ],
+            ),
+            if (_editMode) ...[
+              const SizedBox(height: 8),
+              Text(
+                _slideTool
+                    ? 'Tap two notes to connect them with a slide; tap a slide to remove it.'
+                    : 'Tap a scale note to hide it; tap an empty spot to add an outside note. '
+                        'Tap again to undo.',
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12, height: 1.4),
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
 
           if (chords.isNotEmpty) ...[
             Text('CHORDS', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
@@ -354,6 +405,132 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     );
   }
 
+  _FretboardPainter _statePainter(
+    ColorScheme cs,
+    bool isDark,
+    bool useFlats,
+    List<FretNote> notes,
+    List<CompareNote>? compareNotes,
+    Set<String>? activeKeys, {
+    required bool dotsOnly,
+  }) {
+    final sig = [
+      _root, _scaleId, _label.index, _pattern.index, _posIndex, _compare,
+      _scaleBId, _chordDegree ?? -1, _rotateLabels, dotsOnly, isDark,
+      _hidden.join('.'), _added.join('.'),
+      _slides.map((s) => s.join('>')).join('.'), _slidePending ?? '',
+    ].join('|');
+    return _FretboardPainter(
+      notes: notes,
+      compareNotes: compareNotes,
+      label: _label,
+      activeKeys: activeKeys,
+      signature: sig,
+      boardFill: cs.onSurface.withValues(alpha: 0.04),
+      line: cs.outlineVariant,
+      nut: cs.onSurfaceVariant.withValues(alpha: 0.6),
+      inlay: cs.onSurfaceVariant.withValues(alpha: 0.22),
+      fretNum: cs.onSurfaceVariant,
+      rootFill: cs.primary,
+      rootText: cs.onPrimary,
+      noteFill: cs.secondary,
+      noteText: cs.onSecondary,
+      dotStroke: cs.surface,
+      amber: Sanctuary.auroraAmber,
+      ring: cs.onSurface.withValues(alpha: 0.5),
+      hidden: _hidden,
+      added: _added,
+      slides: _slides,
+      rotateLabels: _rotateLabels,
+      slidePending: dotsOnly ? null : _slidePending,
+      useFlats: useFlats,
+      dotsOnly: dotsOnly,
+      addedColor: cs.onSurfaceVariant,
+      slideColor: isDark ? Sanctuary.success : Sanctuary.lightSuccess,
+    );
+  }
+
+  // --- Edit gestures (Phase 5) — taps only, so the board still scrolls ---
+  void _onBoardTap(Offset o) {
+    if (_slideTool) {
+      final hit = _slideNear(o);
+      if (hit != null) {
+        setState(() {
+          _slides.removeAt(hit);
+          _slidePending = null;
+        });
+        return;
+      }
+      final cell = _cellFromOffset(o);
+      setState(() {
+        if (_slidePending == null) {
+          _slidePending = cell;
+        } else if (_slidePending == cell) {
+          _slidePending = null; // tapped the same cell → cancel
+        } else {
+          _slides.add([_slidePending!, cell]);
+          _slidePending = null;
+        }
+      });
+    } else {
+      final cell = _cellFromOffset(o);
+      final parts = cell.split(':');
+      final s = int.parse(parts[0]);
+      final f = int.parse(parts[1]);
+      setState(() {
+        if (_isScaleNote(s, f)) {
+          _hidden.contains(cell) ? _hidden.remove(cell) : _hidden.add(cell);
+        } else {
+          _added.contains(cell) ? _added.remove(cell) : _added.add(cell);
+        }
+      });
+    }
+  }
+
+  String _cellFromOffset(Offset o) {
+    final s = ((o.dy - _FretboardPainter.padT) / _FretboardPainter.stringGap)
+        .round()
+        .clamp(0, _FretboardPainter.nStrings - 1)
+        .toInt();
+    final int f;
+    if (o.dx < _FretboardPainter.padL) {
+      f = 0;
+    } else {
+      f = ((o.dx - _FretboardPainter.padL) / _FretboardPainter.fretW + 0.5)
+          .round()
+          .clamp(1, _FretboardPainter.maxFret)
+          .toInt();
+    }
+    return noteKey(s, f);
+  }
+
+  bool _isScaleNote(int s, int f) {
+    final rootPc = pitchClass(_root);
+    final openPc = pitchClass(kStandardTuning[s]);
+    if (rootPc == null || openPc == null) return false;
+    final pc = (openPc + f) % 12;
+    return _scale.intervals.map((i) => (rootPc + i) % 12).contains(pc);
+  }
+
+  int? _slideNear(Offset o) {
+    for (var i = 0; i < _slides.length; i++) {
+      final a = _FretboardPainter.cellCenter(_slides[i][0]);
+      final b = _FretboardPainter.cellCenter(_slides[i][1]);
+      if (_distToSegment(o, a, b) <= 12) return i;
+    }
+    return null;
+  }
+
+  double _distToSegment(Offset p, Offset a, Offset b) {
+    final dx = b.dx - a.dx;
+    final dy = b.dy - a.dy;
+    final len2 = dx * dx + dy * dy;
+    if (len2 == 0) return (p - a).distance;
+    var t = ((p.dx - a.dx) * dx + (p.dy - a.dy) * dy) / len2;
+    t = t.clamp(0.0, 1.0);
+    return (p - Offset(a.dx + t * dx, a.dy + t * dy)).distance;
+  }
+
   Widget _keyChip(ColorScheme cs, bool isDark, String r) {
     final selected = r == _root;
     return Material(
@@ -422,6 +599,42 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
                 color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _editChip(ColorScheme cs, bool isDark, String label, IconData icon,
+      bool active, VoidCallback onTap) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: active
+                ? cs.primary.withValues(alpha: 0.15)
+                : (isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1),
+            border: Border.all(
+                color: active
+                    ? cs.primary.withValues(alpha: 0.5)
+                    : cs.outlineVariant),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: active ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(width: 5),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: active ? cs.primary : cs.onSurfaceVariant)),
+            ],
           ),
         ),
       ),
@@ -553,6 +766,15 @@ class _FretboardPainter extends CustomPainter {
     required this.dotStroke,
     required this.amber,
     required this.ring,
+    required this.hidden,
+    required this.added,
+    required this.slides,
+    required this.rotateLabels,
+    required this.slidePending,
+    required this.useFlats,
+    required this.dotsOnly,
+    required this.addedColor,
+    required this.slideColor,
   });
 
   final List<FretNote> notes;
@@ -572,6 +794,16 @@ class _FretboardPainter extends CustomPainter {
   final Color dotStroke;
   final Color amber; // B-only outline + label in compare mode
   final Color ring; // root ring in compare mode
+  // Edit state (Phase 5).
+  final Set<String> hidden; // scale-note cells the user hid
+  final Set<String> added; // out-of-scale cells the user added
+  final List<List<String>> slides; // each [cellA, cellB]
+  final bool rotateLabels; // flip labels 180° (for the person across from you)
+  final String? slidePending; // first cell tapped while drawing a slide
+  final bool useFlats;
+  final bool dotsOnly; // export: dots + slides only, transparent board
+  final Color addedColor; // grey for added out-of-scale notes
+  final Color slideColor; // slide arcs
 
   // Geometry (px) — proportions mirror the web SVG, tuned for mobile.
   static const double stringGap = 30;
@@ -589,61 +821,67 @@ class _FretboardPainter extends CustomPainter {
   static const double totalW = padL + fretW * maxFret + padR;
   static const double totalH = padT + boardH + padB;
 
-  double _stringY(int s) => padT + s * stringGap;
+  // Open-string pitch classes (low E … high e) for spelling added notes.
+  static const List<int> openPc = [4, 9, 2, 7, 11, 4];
+
+  static double _stringY(int s) => padT + s * stringGap;
   // Fretted notes sit in the middle of a fret space; the open note sits in the
   // column left of the nut.
-  double _noteX(int f) => f == 0 ? padL * 0.5 : padL + fretW * (f - 0.5);
-  double _wireX(int f) => padL + fretW * f;
+  static double _noteX(int f) => f == 0 ? padL * 0.5 : padL + fretW * (f - 0.5);
+  static double _wireX(int f) => padL + fretW * f;
+
+  static Offset cellCenter(String key) {
+    final p = key.split(':');
+    return Offset(_noteX(int.parse(p[1])), _stringY(int.parse(p[0])));
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
     final neckLeft = padL;
     final neckRight = padL + fretW * maxFret;
 
-    // Neck fill.
-    final fill = Paint()..color = boardFill;
-    canvas.drawRRect(
-      RRect.fromLTRBR(neckLeft, padT - 8, neckRight, padT + boardH + 8,
-          const Radius.circular(6)),
-      fill,
-    );
+    // Board chrome — skipped for the transparent "dots only" export.
+    if (!dotsOnly) {
+      canvas.drawRRect(
+        RRect.fromLTRBR(neckLeft, padT - 8, neckRight, padT + boardH + 8,
+            const Radius.circular(6)),
+        Paint()..color = boardFill,
+      );
 
-    // Inlays (faint).
-    final inlayPaint = Paint()..color = inlay;
-    final midY = padT + boardH / 2;
-    for (final f in inlayFrets) {
-      canvas.drawCircle(Offset(_noteX(f), midY), 5, inlayPaint);
-    }
-    canvas.drawCircle(Offset(_noteX(doubleInlay), padT + boardH * 0.3), 5, inlayPaint);
-    canvas.drawCircle(Offset(_noteX(doubleInlay), padT + boardH * 0.7), 5, inlayPaint);
+      final inlayPaint = Paint()..color = inlay;
+      final midY = padT + boardH / 2;
+      for (final f in inlayFrets) {
+        canvas.drawCircle(Offset(_noteX(f), midY), 5, inlayPaint);
+      }
+      canvas.drawCircle(Offset(_noteX(doubleInlay), padT + boardH * 0.3), 5, inlayPaint);
+      canvas.drawCircle(Offset(_noteX(doubleInlay), padT + boardH * 0.7), 5, inlayPaint);
 
-    // Strings (low E on top → high e on bottom). Lower strings drawn thicker.
-    for (var s = 0; s < nStrings; s++) {
-      final p = Paint()
+      // Strings (low E on top → high e on bottom). Lower strings drawn thicker.
+      for (var s = 0; s < nStrings; s++) {
+        final p = Paint()
+          ..color = line
+          ..strokeWidth = 0.8 + (nStrings - 1 - s) * 0.22;
+        canvas.drawLine(Offset(10, _stringY(s)), Offset(neckRight, _stringY(s)), p);
+      }
+
+      canvas.drawLine(
+        Offset(neckLeft, padT - 2),
+        Offset(neckLeft, padT + boardH + 2),
+        Paint()
+          ..color = nut
+          ..strokeWidth = 4,
+      );
+      final wirePaint = Paint()
         ..color = line
-        ..strokeWidth = 0.8 + (nStrings - 1 - s) * 0.22;
-      canvas.drawLine(Offset(10, _stringY(s)), Offset(neckRight, _stringY(s)), p);
-    }
+        ..strokeWidth = 1.2;
+      for (var f = 1; f <= maxFret; f++) {
+        canvas.drawLine(Offset(_wireX(f), padT), Offset(_wireX(f), padT + boardH), wirePaint);
+      }
 
-    // Nut (thick) + fret wires.
-    canvas.drawLine(
-      Offset(neckLeft, padT - 2),
-      Offset(neckLeft, padT + boardH + 2),
-      Paint()
-        ..color = nut
-        ..strokeWidth = 4,
-    );
-    final wirePaint = Paint()
-      ..color = line
-      ..strokeWidth = 1.2;
-    for (var f = 1; f <= maxFret; f++) {
-      canvas.drawLine(Offset(_wireX(f), padT), Offset(_wireX(f), padT + boardH), wirePaint);
-    }
-
-    // Fret numbers under the board.
-    for (var f = 1; f <= maxFret; f++) {
-      _text(canvas, '$f', Offset(_noteX(f), padT + boardH + 16),
-          Sanctuary.mono(fontSize: 10, color: fretNum, letterSpacing: 0));
+      for (var f = 1; f <= maxFret; f++) {
+        _text(canvas, '$f', Offset(_noteX(f), padT + boardH + 16),
+            Sanctuary.mono(fontSize: 10, color: fretNum, letterSpacing: 0));
+      }
     }
 
     if (compareNotes != null) {
@@ -651,15 +889,35 @@ class _FretboardPainter extends CustomPainter {
       return;
     }
 
-    // Note dots. Out-of-position notes (when a pattern is active) are dimmed,
-    // not hidden, so the player still sees the whole scale behind the shape.
+    // Slide arcs, drawn under the dots.
+    if (slides.isNotEmpty) {
+      final sp = Paint()
+        ..color = slideColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round;
+      for (final sl in slides) {
+        final a = cellCenter(sl[0]);
+        final b = cellCenter(sl[1]);
+        final ctrl = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2 - 16);
+        canvas.drawPath(
+          Path()
+            ..moveTo(a.dx, a.dy)
+            ..quadraticBezierTo(ctrl.dx, ctrl.dy, b.dx, b.dy),
+          sp,
+        );
+      }
+    }
+
+    // Note dots (hidden cells are skipped). Out-of-position notes dim to 0.14.
     for (final n in notes) {
+      final key = '${n.string}:${n.fret}';
+      if (hidden.contains(key)) continue;
       final c = Offset(_noteX(n.fret), _stringY(n.string));
-      final dim = activeKeys != null && !activeKeys!.contains('${n.string}:${n.fret}');
+      final dim = activeKeys != null && !activeKeys!.contains(key);
       final f = dim ? 0.14 : 1.0;
       final fillColor = n.isRoot ? rootFill : noteFill;
       canvas.drawCircle(c, dotR, Paint()..color = fillColor.withValues(alpha: fillColor.a * f));
-      // Separating ring so adjacent dots stay distinct.
       canvas.drawCircle(
         c,
         dotR,
@@ -681,8 +939,51 @@ class _FretboardPainter extends CustomPainter {
             color: tcol.withValues(alpha: tcol.a * f),
             letterSpacing: 0,
           ),
+          rotate: rotateLabels,
         );
       }
+    }
+
+    // Added out-of-scale notes — grey hollow dots over the board background.
+    for (final key in added) {
+      final c = cellCenter(key);
+      canvas.drawCircle(c, dotR, Paint()..color = dotStroke);
+      canvas.drawCircle(
+        c,
+        dotR,
+        Paint()
+          ..color = addedColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+      if (label != LabelMode.hide) {
+        final p = key.split(':');
+        final pc = (openPc[int.parse(p[0])] + int.parse(p[1])) % 12;
+        _text(
+          canvas,
+          spell(pc, useFlats),
+          c,
+          Sanctuary.mono(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w600,
+            color: addedColor,
+            letterSpacing: 0,
+          ),
+          rotate: rotateLabels,
+        );
+      }
+    }
+
+    // Highlight the pending start cell while drawing a slide.
+    if (slidePending != null) {
+      canvas.drawCircle(
+        cellCenter(slidePending!),
+        dotR + 4,
+        Paint()
+          ..color = slideColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
     }
   }
 
@@ -744,13 +1045,22 @@ class _FretboardPainter extends CustomPainter {
     }
   }
 
-  void _text(Canvas canvas, String text, Offset center, TextStyle style) {
+  void _text(Canvas canvas, String text, Offset center, TextStyle style,
+      {bool rotate = false}) {
     final tp = TextPainter(
       text: TextSpan(text: text, style: style),
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     )..layout();
-    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    if (rotate) {
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate(math.pi);
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      canvas.restore();
+    } else {
+      tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+    }
   }
 
   @override
