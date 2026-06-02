@@ -59,6 +59,12 @@ class GamesIndexScreen extends StatelessWidget {
                   path: '/games/metronome',
                 ),
                 const _GameTile(
+                  title: 'Backing track',
+                  icon: Icons.album,
+                  accent: Sanctuary.auroraMagenta,
+                  path: '/games/backing-track',
+                ),
+                const _GameTile(
                   title: 'Transpose',
                   icon: Icons.swap_horiz,
                   accent: Sanctuary.auroraViolet,
