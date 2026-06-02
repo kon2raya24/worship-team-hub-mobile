@@ -146,3 +146,126 @@ List<FretNote> buildScaleFretboard(
   }
   return out;
 }
+
+// ── Pattern / position systems (Phase 2) ────────────────────────────────────
+// Ported 1:1 from the web app's lib/fretboard-patterns.ts. Each pattern yields
+// a list of "positions"; a position is the set of note cells (string:fret) it
+// lights up. The board dims everything else. Standard tuning only.
+
+enum PatternMode { full, caged, threeNps, diagonal }
+
+String noteKey(int string, int fret) => '$string:$fret';
+
+class Position {
+  final String label;
+  final Set<String> keys;
+  const Position(this.label, this.keys);
+}
+
+// Open-string pitch classes (low E … high e) and their absolute semitones above
+// the low E open string. The 15→19 gap encodes the G→B major third.
+final List<int> _openPc = kStandardTuning.map((n) => pitchClass(n) ?? 0).toList();
+const List<int> _openSemi = [0, 5, 10, 15, 19, 24];
+
+Set<int> _scalePcs(String root, ScaleDef scale) {
+  final rootPc = pitchClass(root) ?? 0;
+  return scale.intervals.map((i) => (rootPc + i) % 12).toSet();
+}
+
+/// Root fret (0-11) on each string — the anchors for CAGED positions.
+List<int> _rootAnchors(int rootPc) {
+  final set = _openPc.map((pc) => (((rootPc - pc) % 12) + 12) % 12).toSet().toList();
+  set.sort();
+  return set;
+}
+
+/// Lit cells inside a per-string fret window.
+Set<String> _windowKeys(
+  Set<int> inScale,
+  int maxFret,
+  int Function(int s) lo,
+  int Function(int s) hi,
+) {
+  final keys = <String>{};
+  for (var s = 0; s < 6; s++) {
+    final from = lo(s) < 0 ? 0 : lo(s);
+    final to = hi(s) > maxFret ? maxFret : hi(s);
+    for (var f = from; f <= to; f++) {
+      if (inScale.contains((_openPc[s] + f) % 12)) keys.add(noteKey(s, f));
+    }
+  }
+  return keys;
+}
+
+List<Position> _cagedPositions(int rootPc, Set<int> inScale, int maxFret) {
+  final anchors = _rootAnchors(rootPc).take(5).toList();
+  return [
+    for (var i = 0; i < anchors.length; i++)
+      Position('Position ${i + 1}',
+          _windowKeys(inScale, maxFret, (_) => anchors[i] - 1, (_) => anchors[i] + 3)),
+  ];
+}
+
+List<Position> _diagonalPositions(int rootPc, Set<int> inScale, int maxFret) {
+  final anchors = _rootAnchors(rootPc);
+  final bases = [
+    anchors[0],
+    anchors.length > 2 ? anchors[2] : anchors[1],
+    anchors.length > 4 ? anchors[4] : anchors[anchors.length - 1],
+  ];
+  const shift = 2;
+  const span = 3;
+  return [
+    for (var i = 0; i < bases.length; i++)
+      Position('Diagonal ${i + 1}',
+          _windowKeys(inScale, maxFret, (s) => bases[i] + s * shift, (s) => bases[i] + s * shift + span)),
+  ];
+}
+
+/// Smallest semitone value ≥ v (above low E open) that is a scale tone.
+int _nextScaleSemi(int v, Set<int> inScale, bool inclusive) {
+  var w = inclusive ? v : v + 1;
+  while (!inScale.contains((_openPc[0] + w) % 12)) {
+    w++;
+  }
+  return w;
+}
+
+List<Position> _threeNpsPositions(int rootPc, Set<int> inScale, int maxFret) {
+  // 3 notes per string is only standard for 7-note (diatonic) scales.
+  if (inScale.length != 7) return [];
+  final lowEStarts = <int>[];
+  for (var f = 0; f < 12; f++) {
+    if (inScale.contains((_openPc[0] + f) % 12)) lowEStarts.add(f);
+  }
+  final starts = lowEStarts.take(7).toList();
+  final out = <Position>[];
+  for (var k = 0; k < starts.length; k++) {
+    final keys = <String>{};
+    var current = starts[k];
+    for (var s = 0; s < 6; s++) {
+      var v = _nextScaleSemi(current, inScale, true);
+      for (var n = 0; n < 3; n++) {
+        final fret = v - _openSemi[s];
+        if (fret >= 0 && fret <= maxFret) keys.add(noteKey(s, fret));
+        v = _nextScaleSemi(v, inScale, false);
+      }
+      current = v; // next string picks up at the next scale tone
+    }
+    out.add(Position('Position ${k + 1}', keys));
+  }
+  return out;
+}
+
+/// Positions for the chosen pattern. Empty list = no position filtering.
+List<Position> getPositions(PatternMode mode, String root, ScaleDef scale, int maxFret) {
+  if (mode == PatternMode.full) return const [];
+  final rootPc = pitchClass(root) ?? 0;
+  final inScale = _scalePcs(root, scale);
+  return switch (mode) {
+    PatternMode.caged => _cagedPositions(rootPc, inScale, maxFret),
+    PatternMode.diagonal => _diagonalPositions(rootPc, inScale, maxFret),
+    PatternMode.threeNps => _threeNpsPositions(rootPc, inScale, maxFret),
+    PatternMode.full => const [],
+  };
+}

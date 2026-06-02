@@ -21,6 +21,8 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
   String _root = 'G';
   String _scaleId = 'major';
   LabelMode _label = LabelMode.notes;
+  PatternMode _pattern = PatternMode.full;
+  int _posIndex = 0; // which position is in focus (CAGED/3NPS/Diagonal)
 
   ScaleDef get _scale =>
       kScales.firstWhere((s) => s.id == _scaleId, orElse: () => kScales.first);
@@ -32,6 +34,12 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     final scale = _scale;
     final notes = buildScaleFretboard(_root, scale);
     final names = scaleNotes(_root, scale);
+    final positions = getPositions(_pattern, _root, scale, _FretboardPainter.maxFret);
+    final hasPositions = positions.isNotEmpty;
+    final idx = hasPositions ? _posIndex % positions.length : 0;
+    final activeKeys = hasPositions ? positions[idx].keys : null;
+    // 3NPS is only defined for 7-note scales — fall back gracefully otherwise.
+    final npsUnavailable = _pattern == PatternMode.threeNps && !hasPositions;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -70,6 +78,31 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          Text('PATTERN', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              _patternChip(cs, isDark, 'Full', PatternMode.full),
+              _patternChip(cs, isDark, 'CAGED', PatternMode.caged),
+              _patternChip(cs, isDark, '3 NPS', PatternMode.threeNps),
+              _patternChip(cs, isDark, 'Diagonal', PatternMode.diagonal),
+            ],
+          ),
+          if (hasPositions) ...[
+            const SizedBox(height: 10),
+            _positionStepper(cs, isDark, positions[idx].label, idx, positions.length),
+          ],
+          if (npsUnavailable) ...[
+            const SizedBox(height: 10),
+            Text(
+              '3 notes-per-string positions are defined for 7-note scales — '
+              'pick a heptatonic scale (e.g. a major, minor, or modal scale).',
+              style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12, height: 1.4),
+            ),
+          ],
+          const SizedBox(height: 16),
 
           // The neck — scroll horizontally to see all 15 frets.
           GlassCard(
@@ -84,7 +117,9 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
                     painter: _FretboardPainter(
                       notes: notes,
                       label: _label,
-                      signature: '$_root|$_scaleId|${_label.index}|$isDark',
+                      activeKeys: activeKeys,
+                      signature:
+                          '$_root|$_scaleId|${_label.index}|${_pattern.index}|$idx|$hasPositions|$isDark',
                       boardFill: cs.onSurface.withValues(alpha: 0.04),
                       line: cs.outlineVariant,
                       nut: cs.onSurfaceVariant.withValues(alpha: 0.6),
@@ -146,7 +181,10 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
-        onTap: () => setState(() => _root = r),
+        onTap: () => setState(() {
+          _root = r;
+          _posIndex = 0;
+        }),
         child: Container(
           constraints: const BoxConstraints(minWidth: 40),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -210,6 +248,72 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     );
   }
 
+  Widget _patternChip(ColorScheme cs, bool isDark, String label, PatternMode mode) {
+    final selected = _pattern == mode;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+        onTap: () => setState(() {
+          _pattern = mode;
+          _posIndex = 0;
+        }),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.15)
+                : (isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1),
+            border: Border.all(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.5)
+                    : cs.outlineVariant),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: selected ? cs.primary : cs.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _positionStepper(
+      ColorScheme cs, bool isDark, String label, int idx, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1,
+        border: Border.all(color: cs.outlineVariant),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_left, size: 20),
+            onPressed: () =>
+                setState(() => _posIndex = (idx - 1 + count) % count),
+          ),
+          Text('$label  ·  ${idx + 1}/$count',
+              style: Sanctuary.mono(
+                  fontSize: 11, color: cs.onSurface, letterSpacing: 0)),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.chevron_right, size: 20),
+            onPressed: () => setState(() => _posIndex = (idx + 1) % count),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _scaleDropdown(ColorScheme cs, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -238,7 +342,12 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
               ),
           ],
           onChanged: (v) {
-            if (v != null) setState(() => _scaleId = v);
+            if (v != null) {
+              setState(() {
+                _scaleId = v;
+                _posIndex = 0;
+              });
+            }
           },
         ),
       ),
@@ -253,6 +362,7 @@ class _FretboardPainter extends CustomPainter {
   _FretboardPainter({
     required this.notes,
     required this.label,
+    required this.activeKeys,
     required this.signature,
     required this.boardFill,
     required this.line,
@@ -268,6 +378,7 @@ class _FretboardPainter extends CustomPainter {
 
   final List<FretNote> notes;
   final LabelMode label;
+  final Set<String>? activeKeys; // null = show the whole board (no dimming)
   final String signature;
   final Color boardFill;
   final Color line;
@@ -353,21 +464,26 @@ class _FretboardPainter extends CustomPainter {
           Sanctuary.mono(fontSize: 10, color: fretNum, letterSpacing: 0));
     }
 
-    // Note dots.
+    // Note dots. Out-of-position notes (when a pattern is active) are dimmed,
+    // not hidden, so the player still sees the whole scale behind the shape.
     for (final n in notes) {
       final c = Offset(_noteX(n.fret), _stringY(n.string));
-      canvas.drawCircle(c, dotR, Paint()..color = n.isRoot ? rootFill : noteFill);
+      final dim = activeKeys != null && !activeKeys!.contains('${n.string}:${n.fret}');
+      final f = dim ? 0.14 : 1.0;
+      final fillColor = n.isRoot ? rootFill : noteFill;
+      canvas.drawCircle(c, dotR, Paint()..color = fillColor.withValues(alpha: fillColor.a * f));
       // Separating ring so adjacent dots stay distinct.
       canvas.drawCircle(
         c,
         dotR,
         Paint()
-          ..color = dotStroke
+          ..color = dotStroke.withValues(alpha: dotStroke.a * f)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
       if (label != LabelMode.hide) {
         final text = label == LabelMode.intervals ? n.interval : n.note;
+        final tcol = n.isRoot ? rootText : noteText;
         _text(
           canvas,
           text,
@@ -375,7 +491,7 @@ class _FretboardPainter extends CustomPainter {
           Sanctuary.mono(
             fontSize: 10.5,
             fontWeight: FontWeight.w600,
-            color: n.isRoot ? rootText : noteText,
+            color: tcol.withValues(alpha: tcol.a * f),
             letterSpacing: 0,
           ),
         );
