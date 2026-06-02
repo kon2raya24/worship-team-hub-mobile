@@ -269,3 +269,75 @@ List<Position> getPositions(PatternMode mode, String root, ScaleDef scale, int m
     PatternMode.full => const [],
   };
 }
+
+// ── Scale comparison (Phase 3) ──────────────────────────────────────────────
+// Ported from web lib/fretboard.ts buildComparison/sharedToneCount.
+
+class CompareNote {
+  final int string;
+  final int fret;
+  final int pc;
+  final String note;
+  final int degree;
+  final String interval;
+  final bool isRoot;
+  final bool inA;
+  final bool inB;
+  const CompareNote({
+    required this.string,
+    required this.fret,
+    required this.pc,
+    required this.note,
+    required this.degree,
+    required this.interval,
+    required this.isRoot,
+    required this.inA,
+    required this.inB,
+  });
+}
+
+/// Every note in scale A and/or scale B (same root), tagged with which scale(s)
+/// it belongs to — for the side-by-side comparison overlay.
+List<CompareNote> buildComparison(
+  String root,
+  ScaleDef scaleA,
+  ScaleDef scaleB, {
+  int maxFret = 15,
+  List<String> tuning = kStandardTuning,
+}) {
+  final rootPc = pitchClass(root);
+  if (rootPc == null) return [];
+  final useFlats = rootUsesFlats(root);
+  final aSet = scaleA.intervals.map((i) => (rootPc + i) % 12).toSet();
+  final bSet = scaleB.intervals.map((i) => (rootPc + i) % 12).toSet();
+  final out = <CompareNote>[];
+  for (var string = 0; string < tuning.length; string++) {
+    final openPc = pitchClass(tuning[string]);
+    if (openPc == null) continue;
+    for (var fret = 0; fret <= maxFret; fret++) {
+      final pc = (openPc + fret) % 12;
+      final inA = aSet.contains(pc);
+      final inB = bSet.contains(pc);
+      if (!inA && !inB) continue;
+      final degree = (((pc - rootPc) % 12) + 12) % 12;
+      out.add(CompareNote(
+        string: string,
+        fret: fret,
+        pc: pc,
+        note: spell(pc, useFlats),
+        degree: degree,
+        interval: intervalLabel(degree),
+        isRoot: degree == 0,
+        inA: inA,
+        inB: inB,
+      ));
+    }
+  }
+  return out;
+}
+
+/// Count of shared pitch classes between two scales at the same root.
+int sharedToneCount(ScaleDef scaleA, ScaleDef scaleB) {
+  final b = scaleB.intervals.map((i) => i % 12).toSet();
+  return scaleA.intervals.map((i) => i % 12).toSet().where(b.contains).length;
+}
