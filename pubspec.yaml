@@ -56,6 +56,9 @@ dependencies:
   # Samples are synthesised in-Dart as WAV bytes, so no audio assets are bundled.
   audioplayers: ^6.1.0
 
+  # Microphone PCM stream for the chromatic tuner (pitch detection is in Dart).
+  flutter_sound: ^9.2.13
+
 
   # Local prefs
   shared_preferences: ^2.3.2

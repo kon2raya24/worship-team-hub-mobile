@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
     <!-- In-app OTA: install the downloaded APK (Android 8+). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Microphone access for the chromatic tuner (games). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
         android:label="Worship Hub"
         android:name="${applicationName}"
