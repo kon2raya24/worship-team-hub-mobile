@@ -51,6 +51,11 @@ dependencies:
   # Native share sheet — share public links to songs / setlists
   share_plus: ^10.1.1
 
+  # Low-latency short-sample playback for the practice audio tools
+  # (metronome click, backing-track voices). Samples are generated in-Dart as
+  # WAV bytes, so no audio asset files are bundled.
+  soundpool: ^2.4.0
+
   # Local prefs
   shared_preferences: ^2.3.2
 

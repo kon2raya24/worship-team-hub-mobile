@@ -34,6 +34,7 @@ import '../features/games/ui/intervals_game_screen.dart';
 import '../features/games/ui/chord_tones_game_screen.dart';
 import '../features/games/ui/relative_game_screen.dart';
 import '../features/games/ui/fretboard_explorer_screen.dart';
+import '../features/games/ui/metronome_screen.dart';
 import '../features/settings/ui/settings_screen.dart';
 import '../features/team/ui/team_screen.dart';
 import 'home_shell.dart';
@@ -247,6 +248,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'fretboard',
                     builder: (_, __) => const FretboardExplorerScreen(),
+                  ),
+                  GoRoute(
+                    path: 'metronome',
+                    builder: (_, __) => const MetronomeScreen(),
                   ),
                 ],
               ),
