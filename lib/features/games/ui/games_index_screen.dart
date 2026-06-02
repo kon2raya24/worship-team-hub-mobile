@@ -58,6 +58,12 @@ class GamesIndexScreen extends StatelessWidget {
                   accent: Sanctuary.auroraAmber,
                   path: '/games/metronome',
                 ),
+                _GameTile(
+                  title: 'Tuner',
+                  icon: Icons.graphic_eq,
+                  accent: isDark ? Sanctuary.success : Sanctuary.lightSuccess,
+                  path: '/games/tuner',
+                ),
                 const _GameTile(
                   title: 'Transpose',
                   icon: Icons.swap_horiz,

@@ -56,6 +56,10 @@ dependencies:
   # WAV bytes, so no audio asset files are bundled.
   soundpool: ^2.4.0
 
+  # Microphone PCM stream for the chromatic tuner (pitch detection is done in
+  # Dart). Needs RECORD_AUDIO (Android) / NSMicrophoneUsageDescription (iOS).
+  record: ^5.1.0
+
   # Local prefs
   shared_preferences: ^2.3.2
 
