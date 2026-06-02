@@ -2,20 +2,18 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 /// Metronome audio engine (Flutter port of the web lib/use-metronome.ts).
 ///
-/// Uses audioplayers in low-latency mode (wraps the native short-sample player)
-/// with two preloaded clicks — a normal one and a higher accent for the
-/// downbeat. There's no Web Audio on Flutter, so timing comes from a
-/// self-correcting loop: a fast timer checks a monotonic [Stopwatch] and fires
-/// each beat at its absolute time, so tempo doesn't drift. (Latency isn't
-/// sample-accurate like the web — fine for practice.)
+/// Uses flutter_soloud — a low-latency in-memory engine — with two preloaded
+/// clicks (a normal one and a higher accent for the downbeat), synthesised in
+/// Dart as WAV bytes. Timing comes from a self-correcting loop: a fast timer
+/// checks a monotonic [Stopwatch] and fires each beat at its absolute time, so
+/// tempo doesn't drift. soloud is polyphonic, so clicks never cut each other.
 class MetronomeEngine {
-  final AudioPlayer _normal = AudioPlayer();
-  final AudioPlayer _accent = AudioPlayer();
-  bool _loaded = false;
+  AudioSource? _normal;
+  AudioSource? _accent;
   bool _loading = false;
 
   Timer? _timer;
@@ -37,15 +35,12 @@ class MetronomeEngine {
   }
 
   Future<void> _ensureLoaded() async {
-    if (_loaded || _loading) return;
+    if (_normal != null || _loading) return;
     _loading = true;
-    for (final p in [_normal, _accent]) {
-      await p.setReleaseMode(ReleaseMode.stop);
-      await p.setPlayerMode(PlayerMode.lowLatency);
-    }
-    await _normal.setSourceBytes(_clickWav(1000), mimeType: 'audio/wav');
-    await _accent.setSourceBytes(_clickWav(1500), mimeType: 'audio/wav');
-    _loaded = true;
+    final s = SoLoud.instance;
+    if (!s.isInitialized) await s.init();
+    _normal = await s.loadMem('metro-normal.wav', _clickWav(1000));
+    _accent = await s.loadMem('metro-accent.wav', _clickWav(1500));
     _loading = false;
   }
 
@@ -75,10 +70,8 @@ class MetronomeEngine {
     // Fire every beat whose scheduled time has passed (catches up after a stall).
     while (now >= _nextBeat) {
       final accent = _beat == 0;
-      if (_loaded) {
-        // In low-latency mode, resume() re-triggers the preloaded sound.
-        (accent ? _accent : _normal).resume();
-      }
+      final src = accent ? _accent : _normal;
+      if (src != null) SoLoud.instance.play(src);
       onBeat?.call(_beat);
       _beat = (_beat + 1) % beatsPerBar;
       _nextBeat += beatMs;
@@ -87,8 +80,13 @@ class MetronomeEngine {
 
   void dispose() {
     _timer?.cancel();
-    _normal.dispose();
-    _accent.dispose();
+    final s = SoLoud.instance;
+    final n = _normal;
+    final a = _accent;
+    if (n != null) s.disposeSource(n);
+    if (a != null) s.disposeSource(a);
+    _normal = null;
+    _accent = null;
   }
 
   /// A short sine click with a fast exponential decay, as 16-bit mono PCM in a

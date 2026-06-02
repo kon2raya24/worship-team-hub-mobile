@@ -2,24 +2,22 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter_soloud/flutter_soloud.dart';
 
 /// Backing-track engine (a SIMPLIFIED Flutter port of the web backing track).
 ///
 /// The web version uses smplr soundfonts + sampled kits, which have no Flutter
-/// equivalent (and soundpool — the obvious sample player — won't compile on the
-/// current toolchain). So we synthesise everything in-Dart as WAV bytes and play
-/// it through audioplayers in low-latency mode. To avoid fragile per-note
-/// pitching/polyphony, each DISTINCT chord is pre-mixed into one triad WAV and
-/// each distinct bass root into one WAV, each on its own preloaded player;
-/// kick/snare/hat get one player each. A drift-free lookahead loop (like the
-/// metronome) steps at the eighth note.
+/// equivalent. Here we synthesise everything in-Dart as WAV bytes and play it
+/// through flutter_soloud (low-latency, polyphonic, plays from memory). Each
+/// DISTINCT chord is pre-mixed into one triad source and each distinct bass
+/// root into one source; kick/snare/hat get one each. A drift-free lookahead
+/// loop (like the metronome) steps at the eighth note.
 class BackingTrackEngine {
-  final Map<String, AudioPlayer> _padFor = {}; // key: pcs joined
-  final Map<int, AudioPlayer> _bassFor = {}; // key: root pc
-  AudioPlayer? _kickP;
-  AudioPlayer? _snareP;
-  AudioPlayer? _hatP;
+  final Map<String, AudioSource> _padFor = {}; // key: pcs joined
+  final Map<int, AudioSource> _bassFor = {}; // key: root pc
+  AudioSource? _kickS;
+  AudioSource? _snareS;
+  AudioSource? _hatS;
   List<List<int>> _builtFor = [];
   bool _building = false;
 
@@ -44,31 +42,26 @@ class BackingTrackEngine {
 
   bool get running => _timer != null;
 
-  AudioPlayer _newPlayer() => AudioPlayer()
-    ..setReleaseMode(ReleaseMode.stop)
-    ..setPlayerMode(PlayerMode.lowLatency);
-
   Future<void> _ensureBuilt() async {
     if (_building) return;
     if (_listEq(_builtFor, chords) && _padFor.isNotEmpty) return;
     _building = true;
+    final s = SoLoud.instance;
+    if (!s.isInitialized) await s.init();
 
     // Drums are chord-independent — build once.
-    if (_kickP == null) {
-      _kickP = _newPlayer();
-      _snareP = _newPlayer();
-      _hatP = _newPlayer();
-      await _kickP!.setSourceBytes(_wav(_kickWav()), mimeType: 'audio/wav');
-      await _snareP!.setSourceBytes(_wav(_snareWav()), mimeType: 'audio/wav');
-      await _hatP!.setSourceBytes(_wav(_hatWav()), mimeType: 'audio/wav');
+    if (_kickS == null) {
+      _kickS = await s.loadMem('bt-kick.wav', _wav(_kickWav()));
+      _snareS = await s.loadMem('bt-snare.wav', _wav(_snareWav()));
+      _hatS = await s.loadMem('bt-hat.wav', _wav(_hatWav()));
     }
 
-    // Rebuild the per-chord pad + bass players for the current progression.
-    for (final p in _padFor.values) {
-      p.dispose();
+    // Rebuild per-chord pad + bass sources for the current progression.
+    for (final src in _padFor.values) {
+      s.disposeSource(src);
     }
-    for (final p in _bassFor.values) {
-      p.dispose();
+    for (final src in _bassFor.values) {
+      s.disposeSource(src);
     }
     _padFor.clear();
     _bassFor.clear();
@@ -76,15 +69,14 @@ class BackingTrackEngine {
     for (final chord in chords) {
       final key = chord.join(',');
       if (!_padFor.containsKey(key)) {
-        final pp = _newPlayer();
-        await pp.setSourceBytes(_wav(_chordWav(chord)), mimeType: 'audio/wav');
-        _padFor[key] = pp;
+        _padFor[key] = await s.loadMem('bt-pad-$key.wav', _wav(_chordWav(chord)));
       }
       final root = chord[0];
       if (!_bassFor.containsKey(root)) {
-        final bp = _newPlayer();
-        await bp.setSourceBytes(_wav(_toneWav(_freq(36 + root), 1.0, const [1.0, 0.45, 0.15], gain: 0.5, decay: 3.0)), mimeType: 'audio/wav');
-        _bassFor[root] = bp;
+        _bassFor[root] = await s.loadMem(
+          'bt-bass-$root.wav',
+          _wav(_toneWav(_freq(36 + root), 1.0, const [1.0, 0.45, 0.15], gain: 0.5, decay: 3.0)),
+        );
       }
     }
     _builtFor = [for (final c in chords) List<int>.of(c)];
@@ -124,6 +116,7 @@ class BackingTrackEngine {
   }
 
   void _playStep() {
+    final s = SoLoud.instance;
     final stepsPerChord = barsPerChord * 8;
     final eighth = _stepInChord % 8;
     final chord = chords[_chordIndex % chords.length];
@@ -131,13 +124,19 @@ class BackingTrackEngine {
     if (_stepInChord == 0) onChord?.call(_chordIndex % chords.length);
 
     if (eighth == 0) {
-      if (padOn) _padFor[chord.join(',')]?.resume();
-      if (bassOn) _bassFor[chord[0]]?.resume();
+      if (padOn) {
+        final pad = _padFor[chord.join(',')];
+        if (pad != null) s.play(pad);
+      }
+      if (bassOn) {
+        final bass = _bassFor[chord[0]];
+        if (bass != null) s.play(bass);
+      }
     }
     if (drumsOn) {
-      if (_kickSteps.contains(eighth)) _kickP?.resume();
-      if (_snareSteps.contains(eighth)) _snareP?.resume();
-      _hatP?.resume();
+      if (_kickSteps.contains(eighth) && _kickS != null) s.play(_kickS!);
+      if (_snareSteps.contains(eighth) && _snareS != null) s.play(_snareS!);
+      if (_hatS != null) s.play(_hatS!);
     }
 
     _stepInChord++;
@@ -149,15 +148,19 @@ class BackingTrackEngine {
 
   void dispose() {
     _timer?.cancel();
-    for (final p in _padFor.values) {
-      p.dispose();
+    final s = SoLoud.instance;
+    for (final src in _padFor.values) {
+      s.disposeSource(src);
     }
-    for (final p in _bassFor.values) {
-      p.dispose();
+    for (final src in _bassFor.values) {
+      s.disposeSource(src);
     }
-    _kickP?.dispose();
-    _snareP?.dispose();
-    _hatP?.dispose();
+    final k = _kickS;
+    final sn = _snareS;
+    final h = _hatS;
+    if (k != null) s.disposeSource(k);
+    if (sn != null) s.disposeSource(sn);
+    if (h != null) s.disposeSource(h);
   }
 
   bool _listEq(List<List<int>> a, List<List<int>> b) {

@@ -51,10 +51,10 @@ dependencies:
   # Native share sheet — share public links to songs / setlists
   share_plus: ^10.1.1
 
-  # Audio playback for the practice tools (metronome, backing track). Maintained
-  # (no v1-embedding); its low-latency mode wraps the native short-sample player.
-  # Samples are synthesised in-Dart as WAV bytes, so no audio assets are bundled.
-  audioplayers: ^6.1.0
+  # Low-latency in-memory audio engine for the practice tools (metronome,
+  # backing track). Plays synthesised WAV bytes directly, polyphonic. Replaces
+  # audioplayers, whose low-latency retrigger produced no sound on-device.
+  flutter_soloud: ^3.1.0
 
   # Microphone PCM stream for the chromatic tuner (pitch detection is in Dart).
   flutter_sound: ^9.2.13

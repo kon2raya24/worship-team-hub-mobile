@@ -103,7 +103,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           GlassCard(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -117,7 +117,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                       _chip(cs, isDark, r, r == _root, () => setState(() => _root = r), mono: true),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Text('TONALITY',
@@ -130,7 +130,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                         () => setState(() => _quality = 'natural-minor')),
                   ],
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 Text('PROGRESSION',
                     style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
                 const SizedBox(height: 8),
@@ -148,7 +148,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
           ),
           const SizedBox(height: 12),
           GlassCard(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -183,7 +183,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Center(
             child: FilledButton.icon(
               onPressed: _loading ? null : _toggle,
@@ -191,7 +191,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
               label: Text(_loading ? 'Loading…' : (_running ? 'Stop' : 'Play')),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -215,23 +215,25 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
   Widget _chordCard(ColorScheme cs, DiatonicChord c, bool active) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      width: 84,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      width: 60,
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       decoration: BoxDecoration(
         color: active ? cs.primary.withValues(alpha: 0.15) : cs.surface.withValues(alpha: 0.4),
         border: Border.all(
             color: active ? cs.primary.withValues(alpha: 0.6) : cs.outlineVariant),
-        borderRadius: BorderRadius.circular(Sanctuary.radiusLg),
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(c.roman, style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
-          const SizedBox(height: 2),
+          Text(c.roman, style: Sanctuary.mono(fontSize: 9, color: cs.onSurfaceVariant)),
           Text(c.name,
               style: Sanctuary.display(
-                  fontSize: 18, color: active ? cs.primary : cs.onSurface)),
+                  fontSize: 15, color: active ? cs.primary : cs.onSurface)),
           Text(c.notes.join(' '),
-              style: Sanctuary.mono(fontSize: 9, color: cs.onSurfaceVariant, letterSpacing: 0)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Sanctuary.mono(fontSize: 8, color: cs.onSurfaceVariant, letterSpacing: 0)),
         ],
       ),
     );
