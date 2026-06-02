@@ -25,6 +25,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
   int _posIndex = 0; // which position is in focus (CAGED/3NPS/Diagonal)
   bool _compare = false;
   String _scaleBId = 'natural-minor';
+  int? _chordDegree; // selected diatonic chord (lights its tones); null = none
 
   ScaleDef get _scale =>
       kScales.firstWhere((s) => s.id == _scaleId, orElse: () => kScales.first);
@@ -49,10 +50,30 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
         : getPositions(_pattern, _root, scale, _FretboardPainter.maxFret);
     final hasPositions = positions.isNotEmpty;
     final idx = hasPositions ? _posIndex % positions.length : 0;
-    final activeKeys = hasPositions ? positions[idx].keys : null;
     // 3NPS is only defined for 7-note scales — fall back gracefully otherwise.
     final npsUnavailable =
         !_compare && _pattern == PatternMode.threeNps && !hasPositions;
+
+    // Diatonic chords (7-note scales only); tapping one lights its tones and
+    // overrides any active pattern.
+    final chords = _compare ? const <DiatonicChord>[] : buildDiatonicChords(_root, scale);
+    DiatonicChord? selectedChord;
+    for (final c in chords) {
+      if (c.degree == _chordDegree) {
+        selectedChord = c;
+        break;
+      }
+    }
+    Set<String>? chordKeys;
+    if (selectedChord != null) {
+      final pcs = selectedChord.pcs.toSet();
+      chordKeys = notes
+          .where((n) => pcs.contains(n.pc))
+          .map((n) => noteKey(n.string, n.fret))
+          .toSet();
+    }
+    final activeKeys =
+        chordKeys ?? (hasPositions ? positions[idx].keys : null);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -82,6 +103,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
             setState(() {
               _scaleId = v;
               _posIndex = 0;
+              _chordDegree = null;
             });
           }),
           const SizedBox(height: 10),
@@ -93,7 +115,10 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
               ),
               Switch(
                 value: _compare,
-                onChanged: (v) => setState(() => _compare = v),
+                onChanged: (v) => setState(() {
+                  _compare = v;
+                  _chordDegree = null;
+                }),
               ),
             ],
           ),
@@ -163,7 +188,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
                       activeKeys: activeKeys,
                       signature:
                           '$_root|$_scaleId|${_label.index}|${_pattern.index}|$idx|$hasPositions|'
-                          '$_compare|$_scaleBId|$isDark',
+                          '$_compare|$_scaleBId|${_chordDegree ?? -1}|$isDark',
                       boardFill: cs.onSurface.withValues(alpha: 0.04),
                       line: cs.outlineVariant,
                       nut: cs.onSurfaceVariant.withValues(alpha: 0.6),
@@ -188,6 +213,25 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
             ),
           ),
           const SizedBox(height: 16),
+
+          if (chords.isNotEmpty) ...[
+            Text('CHORDS', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [for (final c in chords) _chordCard(cs, isDark, c)],
+            ),
+            if (selectedChord != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Showing ${selectedChord.name} (${selectedChord.notes.join(" ")}) across the neck. '
+                'Tap the chord again to clear.',
+                style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12, height: 1.4),
+              ),
+            ],
+            const SizedBox(height: 16),
+          ],
 
           if (_compare) ...[
             Text('$_root · ${scale.name}  vs  ${scaleB.name}',
@@ -271,6 +315,45 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     );
   }
 
+  Widget _chordCard(ColorScheme cs, bool isDark, DiatonicChord c) {
+    final selected = _chordDegree == c.degree;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+        onTap: () => setState(() => _chordDegree = selected ? null : c.degree),
+        child: Container(
+          width: 76,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          decoration: BoxDecoration(
+            color: selected
+                ? cs.primary.withValues(alpha: 0.15)
+                : (isDark ? Sanctuary.glass1 : Sanctuary.lightGlass1),
+            border: Border.all(
+                color: selected
+                    ? cs.primary.withValues(alpha: 0.5)
+                    : cs.outlineVariant),
+            borderRadius: BorderRadius.circular(Sanctuary.radiusMd),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(c.roman,
+                  style: Sanctuary.mono(
+                      fontSize: 10,
+                      color: selected ? cs.primary : cs.onSurfaceVariant,
+                      letterSpacing: 0)),
+              const SizedBox(height: 2),
+              Text(c.name,
+                  style: Sanctuary.display(
+                      fontSize: 16, color: selected ? cs.primary : cs.onSurface)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _keyChip(ColorScheme cs, bool isDark, String r) {
     final selected = r == _root;
     return Material(
@@ -280,6 +363,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
         onTap: () => setState(() {
           _root = r;
           _posIndex = 0;
+          _chordDegree = null;
         }),
         child: Container(
           constraints: const BoxConstraints(minWidth: 40),

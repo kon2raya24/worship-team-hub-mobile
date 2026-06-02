@@ -341,3 +341,107 @@ int sharedToneCount(ScaleDef scaleA, ScaleDef scaleB) {
   final b = scaleB.intervals.map((i) => i % 12).toSet();
   return scaleA.intervals.map((i) => i % 12).toSet().where(b.contains).length;
 }
+
+// ── Diatonic chords (Phase 4) ───────────────────────────────────────────────
+// Ported from web lib/fretboard-chords.ts. Stacks thirds *within* the scale so
+// every 7-note scale yields its correct triads. Empty for non-7-note scales.
+// Known limitation (same as web): enharmonic spelling follows the root's
+// major-key preference (rootUsesFlats), so e.g. C harmonic minor shows D#aug,
+// not Eb+ — pitch right, spelling sharp.
+
+class DiatonicChord {
+  final int degree; // 1..7
+  final String roman; // e.g. "ii", "♭VII", "vii°"
+  final String name; // triad name, e.g. "Am"
+  final String seventh; // seventh-chord name, e.g. "Am7"
+  final String quality; // maj | min | dim | aug
+  final String rootNote;
+  final List<String> notes; // triad note names
+  final List<int> pcs; // triad pitch classes
+  const DiatonicChord({
+    required this.degree,
+    required this.roman,
+    required this.name,
+    required this.seventh,
+    required this.quality,
+    required this.rootNote,
+    required this.notes,
+    required this.pcs,
+  });
+}
+
+const List<int> _majorRef = [0, 2, 4, 5, 7, 9, 11];
+const List<String> _romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+/// Scale tone `step` degrees above degree `i`, in absolute semitones.
+int _stackTone(List<int> deg, int i, int step) =>
+    deg[(i + step) % 7] + ((i + step) ~/ 7) * 12;
+
+String _seventhSuffix(String quality, int gap) {
+  if (quality == 'maj') return gap == 11 ? 'maj7' : '7';
+  if (quality == 'min') return gap == 11 ? 'm(maj7)' : 'm7';
+  if (quality == 'dim') return gap == 9 ? '°7' : 'm7♭5';
+  return gap == 11 ? 'maj7♯5' : '7♯5'; // aug
+}
+
+/// Diatonic triads (+7th names) for a 7-note scale. Empty for other scales.
+List<DiatonicChord> buildDiatonicChords(String root, ScaleDef scale) {
+  if (scale.intervals.length != 7) return [];
+  final rootPc = pitchClass(root);
+  if (rootPc == null) return [];
+  final useFlats = rootUsesFlats(root);
+  final deg = scale.intervals;
+  final chords = <DiatonicChord>[];
+
+  for (var i = 0; i < 7; i++) {
+    final r = deg[i];
+    final third = _stackTone(deg, i, 2);
+    final fifth = _stackTone(deg, i, 4);
+    final seventh = _stackTone(deg, i, 6);
+    final t = (third - r) % 12; // third interval
+    final f = (fifth - r) % 12; // fifth interval
+    final sGap = (seventh - r) % 12;
+
+    String quality;
+    String suffix;
+    var mark = '';
+    if (t == 4 && f == 7) {
+      quality = 'maj';
+      suffix = '';
+    } else if (t == 3 && f == 7) {
+      quality = 'min';
+      suffix = 'm';
+    } else if (t == 3 && f == 6) {
+      quality = 'dim';
+      suffix = 'dim';
+      mark = '°';
+    } else if (t == 4 && f == 8) {
+      quality = 'aug';
+      suffix = 'aug';
+      mark = '+';
+    } else {
+      // Non-tertian degree (rare, exotic scales) — fall back by the third.
+      quality = t <= 3 ? 'min' : 'maj';
+      suffix = t <= 3 ? 'm' : '';
+    }
+
+    final acc = r < _majorRef[i] ? '♭' : (r > _majorRef[i] ? '♯' : '');
+    var roman = acc + _romanNumerals[i];
+    if (quality == 'min' || quality == 'dim') roman = roman.toLowerCase();
+    roman += mark;
+
+    final pcs = [r, third, fifth].map((x) => (rootPc + x) % 12).toList();
+    final rootNote = spell((rootPc + r) % 12, useFlats);
+    chords.add(DiatonicChord(
+      degree: i + 1,
+      roman: roman,
+      name: rootNote + suffix,
+      seventh: rootNote + _seventhSuffix(quality, sGap),
+      quality: quality,
+      rootNote: rootNote,
+      notes: pcs.map((pc) => spell(pc, useFlats)).toList(),
+      pcs: pcs,
+    ));
+  }
+  return chords;
+}
