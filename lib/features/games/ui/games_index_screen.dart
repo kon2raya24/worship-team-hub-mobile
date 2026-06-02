@@ -47,6 +47,12 @@ class GamesIndexScreen extends StatelessWidget {
               childAspectRatio: 1.05,
               children: [
                 const _GameTile(
+                  title: 'Fretboard',
+                  icon: Icons.music_note,
+                  accent: Sanctuary.auroraCyan,
+                  path: '/games/fretboard',
+                ),
+                const _GameTile(
                   title: 'Transpose',
                   icon: Icons.swap_horiz,
                   accent: Sanctuary.auroraViolet,
