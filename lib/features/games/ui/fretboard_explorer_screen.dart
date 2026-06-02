@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/theme.dart';
 import '../fretboard_data.dart';
@@ -75,16 +79,7 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
         break;
       }
     }
-    Set<String>? chordKeys;
-    if (selectedChord != null) {
-      final pcs = selectedChord.pcs.toSet();
-      chordKeys = notes
-          .where((n) => pcs.contains(n.pc))
-          .map((n) => noteKey(n.string, n.fret))
-          .toSet();
-    }
-    final activeKeys =
-        chordKeys ?? (hasPositions ? positions[idx].keys : null);
+    final activeKeys = _activeKeysFor(notes, scale);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -250,6 +245,10 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
                       });
                     }),
                 ],
+                _editChip(cs, isDark, 'PNG', Icons.image_outlined, false,
+                    () => _exportPng(cs, isDark, dotsOnly: false)),
+                _editChip(cs, isDark, 'Dots', Icons.blur_on, false,
+                    () => _exportPng(cs, isDark, dotsOnly: true)),
               ],
             ),
             if (_editMode) ...[
@@ -529,6 +528,64 @@ class _FretboardExplorerScreenState extends State<FretboardExplorerScreen> {
     var t = ((p.dx - a.dx) * dx + (p.dy - a.dy) * dy) / len2;
     t = t.clamp(0.0, 1.0);
     return (p - Offset(a.dx + t * dx, a.dy + t * dy)).distance;
+  }
+
+  // Cells lit by the current view: a tapped chord's tones (overriding any
+  // pattern), else the active pattern position, else null (whole board).
+  Set<String>? _activeKeysFor(List<FretNote> notes, ScaleDef scale) {
+    if (_compare) return null;
+    if (_chordDegree != null) {
+      for (final c in buildDiatonicChords(_root, scale)) {
+        if (c.degree == _chordDegree) {
+          final pcs = c.pcs.toSet();
+          return notes
+              .where((n) => pcs.contains(n.pc))
+              .map((n) => noteKey(n.string, n.fret))
+              .toSet();
+        }
+      }
+    }
+    final positions = getPositions(_pattern, _root, scale, _FretboardPainter.maxFret);
+    if (positions.isEmpty) return null;
+    return positions[_posIndex % positions.length].keys;
+  }
+
+  // Render the current board to a PNG and hand it to the share sheet. dotsOnly
+  // drops the neck chrome for a transparent overlay (handy for video).
+  Future<void> _exportPng(ColorScheme cs, bool isDark, {required bool dotsOnly}) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final scale = _scale;
+      final useFlats = rootUsesFlats(_root);
+      final notes = buildScaleFretboard(_root, scale);
+      final compareNotes = _compare ? buildComparison(_root, scale, _scaleB) : null;
+      final activeKeys = _activeKeysFor(notes, scale);
+      final painter =
+          _statePainter(cs, isDark, useFlats, notes, compareNotes, activeKeys, dotsOnly: dotsOnly);
+
+      const pr = 3.0;
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      canvas.scale(pr);
+      painter.paint(canvas, const Size(_FretboardPainter.totalW, _FretboardPainter.totalH));
+      final img = await recorder.endRecording().toImage(
+            (_FretboardPainter.totalW * pr).round(),
+            (_FretboardPainter.totalH * pr).round(),
+          );
+      final data = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (data == null) return;
+
+      final dir = await getTemporaryDirectory();
+      final file = await File('${dir.path}/fretboard${dotsOnly ? '-dots' : ''}.png')
+          .writeAsBytes(data.buffer.asUint8List());
+      await Share.shareXFiles([XFile(file.path, mimeType: 'image/png')]);
+    } catch (_) {
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Could not export the image.')),
+        );
+      }
+    }
   }
 
   Widget _keyChip(ColorScheme cs, bool isDark, String r) {
