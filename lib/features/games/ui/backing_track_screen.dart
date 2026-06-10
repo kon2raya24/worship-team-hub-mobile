@@ -14,6 +14,34 @@ const _progressions = <(String, List<int>)>[
   ('ii–V–I', [2, 5, 1]),
 ];
 
+const _styles44 = <(String, String)>[
+  ('none', 'Off'),
+  ('pop', 'Pop'),
+  ('rock', 'Rock'),
+  ('ballad', 'Ballad'),
+  ('funk', 'Funk'),
+  ('dance', 'Dance'),
+  ('halftime', 'Half-time'),
+  ('ride', 'Ride'),
+];
+const _styles68 = <(String, String)>[
+  ('none', 'Off'),
+  ('ballad', 'Ballad'),
+  ('rock', 'Rock'),
+  ('march', 'March'),
+];
+const _feels = <(String, String)>[
+  ('sustained', 'Sustained'),
+  ('pulse', 'Pulse'),
+  ('arpeggio', 'Arpeggio'),
+];
+const _colors = <(String, String)>[
+  ('triads', 'Triads'),
+  ('sevenths', '7ths'),
+  ('lush', 'Lush'),
+];
+const _energyLabels = ['Sparse', 'Groove', 'Full', 'Push'];
+
 class BackingTrackScreen extends StatefulWidget {
   const BackingTrackScreen({super.key});
 
@@ -28,18 +56,28 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
   String _progId = 'Pop';
   int _bpm = 90;
   int _bars = 1;
+  String _meter = '4/4';
+  String _style = 'pop';
+  String _feel = 'pulse';
+  String _color = 'triads';
+  int _energy = 2;
+  bool _autoBuild = true;
+  bool _countIn = true;
   bool _pad = true;
   bool _bass = true;
-  bool _drums = true;
   bool _running = false;
   bool _loading = false;
   int _currentIndex = -1;
+  int _energyNow = -1;
 
   @override
   void initState() {
     super.initState();
     _engine.onChord = (i) {
       if (mounted) setState(() => _currentIndex = i);
+    };
+    _engine.onEnergy = (l) {
+      if (mounted) setState(() => _energyNow = l);
     };
   }
 
@@ -49,12 +87,40 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
     super.dispose();
   }
 
+  ScaleDef get _scale =>
+      kScales.firstWhere((s) => s.id == _quality, orElse: () => kScales.first);
+
   List<DiatonicChord> _chords() {
-    final scale = kScales.firstWhere((s) => s.id == _quality, orElse: () => kScales.first);
-    final all = buildDiatonicChords(_root, scale);
+    final all = buildDiatonicChords(_root, _scale);
     final degrees = _progressions.firstWhere((p) => p.$1 == _progId).$2;
     return [for (final d in degrees) all.firstWhere((c) => c.degree == d)];
   }
+
+  /// Triad pcs extended by the chord color: diatonic 7th, or an add9 ("lush")
+  /// worship voicing. Dim/aug chords stay plain triads in lush mode.
+  List<int> _coloredPcs(DiatonicChord c) {
+    final pcs = List<int>.of(c.pcs);
+    final rootPc = pitchClass(_root) ?? 0;
+    final deg = _scale.intervals;
+    if (_color == 'sevenths') {
+      pcs.add((rootPc + deg[(c.degree + 5) % 7]) % 12);
+    } else if (_color == 'lush' && (c.quality == 'maj' || c.quality == 'min')) {
+      pcs.add((rootPc + deg[c.degree % 7]) % 12);
+    }
+    return pcs;
+  }
+
+  String _colorName(DiatonicChord c) => _color == 'sevenths'
+      ? c.seventh
+      : (_color == 'lush' && (c.quality == 'maj' || c.quality == 'min'))
+          ? '${c.name}add9'
+          : c.name;
+
+  void _chooseMeter(String m) => setState(() {
+        _meter = m;
+        final opts = m == '6/8' ? _styles68 : _styles44;
+        if (!opts.any((s) => s.$1 == _style)) _style = m == '6/8' ? 'ballad' : 'pop';
+      });
 
   Future<void> _toggle() async {
     if (_running) {
@@ -62,12 +128,21 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
       setState(() => _running = false);
     } else {
       setState(() => _loading = true);
-      await _engine.start();
-      if (mounted) {
-        setState(() {
-          _running = true;
-          _loading = false;
-        });
+      try {
+        await _engine.start();
+        if (mounted) {
+          setState(() {
+            _running = true;
+            _loading = false;
+          });
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _loading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Audio failed to start: $e')),
+          );
+        }
       }
     }
   }
@@ -77,17 +152,23 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final chords = _chords();
+    final styles = _meter == '6/8' ? _styles68 : _styles44;
 
     // Keep the engine in sync with the controls (plain field writes; the
     // scheduler reads bpm/toggles live, and start() rebuilds voices if the
     // chord set changed).
     _engine
-      ..chords = [for (final c in chords) c.pcs]
+      ..chords = [for (final c in chords) _coloredPcs(c)]
       ..bpm = _bpm
       ..barsPerChord = _bars
+      ..meter = _meter
+      ..style = _style
+      ..feel = _feel
+      ..energy = _energy
+      ..autoBuild = _autoBuild
+      ..countIn = _countIn
       ..padOn = _pad
-      ..bassOn = _bass
-      ..drumsOn = _drums;
+      ..bassOn = _bass;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -143,6 +224,19 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                           () => setState(() => _progId = p.$1)),
                   ],
                 ),
+                const SizedBox(height: 10),
+                Text('CHORD COLOR',
+                    style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final c in _colors)
+                      _chip(cs, isDark, c.$2, c.$1 == _color,
+                          () => setState(() => _color = c.$1)),
+                  ],
+                ),
               ],
             ),
           ),
@@ -162,22 +256,75 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                 ),
                 Row(
                   children: [
-                    Text('BARS / CHORD',
-                        style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                    Text('METER', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                    const SizedBox(width: 12),
+                    _chip(cs, isDark, '4/4', _meter == '4/4', () => _chooseMeter('4/4')),
+                    const SizedBox(width: 6),
+                    _chip(cs, isDark, '6/8', _meter == '6/8', () => _chooseMeter('6/8')),
+                    const SizedBox(width: 16),
+                    Text('BARS', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
                     const SizedBox(width: 12),
                     _chip(cs, isDark, '1', _bars == 1, () => setState(() => _bars = 1)),
                     const SizedBox(width: 6),
                     _chip(cs, isDark, '2', _bars == 2, () => setState(() => _bars = 2)),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                Text('FEEL', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final f in _feels)
+                      _chip(cs, isDark, f.$2, f.$1 == _feel, () => setState(() => _feel = f.$1)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('DRUMS', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final st in styles)
+                      _chip(cs, isDark, st.$2, st.$1 == _style,
+                          () => setState(() => _style = st.$1)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Build cycles the arrangement (sparse → groove → full → push →
+                // drop) each pass; the live level lights up while it plays.
+                Text('ENERGY', style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _chip(cs, isDark, '🔄 Build', _autoBuild,
+                        () => setState(() => _autoBuild = true)),
+                    for (var i = 0; i < _energyLabels.length; i++)
+                      _chip(
+                        cs,
+                        isDark,
+                        _energyLabels[i],
+                        _autoBuild ? (_running && _energyNow == i) : _energy == i,
+                        () => setState(() {
+                          _autoBuild = false;
+                          _energy = i;
+                        }),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
                     _chip(cs, isDark, 'Pad', _pad, () => setState(() => _pad = !_pad)),
                     _chip(cs, isDark, 'Bass', _bass, () => setState(() => _bass = !_bass)),
-                    _chip(cs, isDark, 'Drums', _drums, () => setState(() => _drums = !_drums)),
+                    _chip(cs, isDark, 'Count-in', _countIn,
+                        () => setState(() => _countIn = !_countIn)),
                   ],
                 ),
               ],
@@ -202,9 +349,10 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
           ),
           const SizedBox(height: 14),
           Text(
-            'A simplified, synthesised backing track (pad + bass + drums). Loop a '
-            'progression and solo over it with the matching scale on the Fretboard. '
-            'For richer sampled instruments, use the web app.',
+            'A synthesised band: chords, style-matched bass, and drums with fills. '
+            '🔄 Build grows the band each pass — sparse, groove, full, push, then '
+            'back down — like a real arrangement. Solo over it with the matching '
+            'scale on the Fretboard.',
             style: TextStyle(color: cs.onSurfaceVariant, fontSize: 12, height: 1.4),
           ),
         ],
@@ -215,8 +363,8 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
   Widget _chordCard(ColorScheme cs, DiatonicChord c, bool active) {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 100),
-      width: 60,
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+      constraints: const BoxConstraints(minWidth: 60),
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
       decoration: BoxDecoration(
         color: active ? cs.primary.withValues(alpha: 0.15) : cs.surface.withValues(alpha: 0.4),
         border: Border.all(
@@ -227,7 +375,7 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(c.roman, style: Sanctuary.mono(fontSize: 9, color: cs.onSurfaceVariant)),
-          Text(c.name,
+          Text(_colorName(c),
               style: Sanctuary.display(
                   fontSize: 15, color: active ? cs.primary : cs.onSurface)),
           Text(c.notes.join(' '),
