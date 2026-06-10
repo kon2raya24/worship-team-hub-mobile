@@ -40,7 +40,58 @@ const _colors = <(String, String)>[
   ('sevenths', '7ths'),
   ('lush', 'Lush'),
 ];
+const _voicings = <(String, String)>[
+  ('smooth', 'Smooth'),
+  ('close', 'Close'),
+  ('spread', 'Spread'),
+];
 const _energyLabels = ['Sparse', 'Groove', 'Full', 'Push'];
+const _fillOpts = <(int, String)>[(0, 'Off'), (2, '2 bars'), (4, '4 bars'), (8, '8 bars')];
+const _countInOpts = <(int, String)>[(0, 'Off'), (1, '1 bar'), (2, '2 bars')];
+
+/// Voice-lead a chord sequence: pick each chord's inversion so its voices
+/// move minimally from the previous chord, instead of re-stacking every chord
+/// in the same octave (the single biggest "robotic" tell). "spread" then
+/// drops the lowest voice an octave for an open, pad-like spacing.
+List<List<int>> voiceLead(List<List<int>> seq, String mode) {
+  if (mode == 'close') {
+    return [for (final pcs in seq) [for (final pc in pcs) 60 + pc]];
+  }
+  List<int>? prev;
+  final out = <List<int>>[];
+  for (final pcs in seq) {
+    var best = <int>[];
+    var bestScore = double.infinity;
+    for (var inv = 0; inv < pcs.length; inv++) {
+      final order = [...pcs.sublist(inv), ...pcs.sublist(0, inv)];
+      // First voice lands in [55, 66]; the rest stack strictly upward.
+      final notes = [55 + ((order[0] - 55) % 12 + 12) % 12];
+      for (var i = 1; i < order.length; i++) {
+        var up = ((order[i] - notes[i - 1]) % 12 + 12) % 12;
+        if (up == 0) up = 12;
+        notes.add(notes[i - 1] + up);
+      }
+      final p = prev;
+      double score;
+      if (p == null) {
+        final mean = notes.fold(0, (a, b) => a + b) / notes.length;
+        score = (mean - 64).abs();
+      } else {
+        score = 0;
+        for (final x in notes) {
+          score += p.map((q) => (x - q).abs()).reduce((a, b) => a < b ? a : b);
+        }
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = notes;
+      }
+    }
+    prev = best;
+    out.add(mode == 'spread' ? [best[0] - 12, ...best.sublist(1)] : best);
+  }
+  return out;
+}
 
 class BackingTrackScreen extends StatefulWidget {
   const BackingTrackScreen({super.key});
@@ -60,9 +111,13 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
   String _style = 'pop';
   String _feel = 'pulse';
   String _color = 'triads';
+  String _voicing = 'smooth';
   int _energy = 2;
   bool _autoBuild = true;
-  bool _countIn = true;
+  int _countIn = 1;
+  int _humanize = 60;
+  bool _walkups = true;
+  int _fillEvery = 4;
   bool _pad = true;
   bool _bass = true;
   bool _running = false;
@@ -157,8 +212,10 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
     // Keep the engine in sync with the controls (plain field writes; the
     // scheduler reads bpm/toggles live, and start() rebuilds voices if the
     // chord set changed).
+    final colored = [for (final c in chords) _coloredPcs(c)];
     _engine
-      ..chords = [for (final c in chords) _coloredPcs(c)]
+      ..chords = voiceLead(colored, _voicing)
+      ..triads = colored
       ..bpm = _bpm
       ..barsPerChord = _bars
       ..meter = _meter
@@ -167,6 +224,9 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
       ..energy = _energy
       ..autoBuild = _autoBuild
       ..countIn = _countIn
+      ..humanize = _humanize
+      ..walkups = _walkups
+      ..fillEvery = _fillEvery
       ..padOn = _pad
       ..bassOn = _bass;
 
@@ -235,6 +295,19 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                     for (final c in _colors)
                       _chip(cs, isDark, c.$2, c.$1 == _color,
                           () => setState(() => _color = c.$1)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('VOICING',
+                    style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final v in _voicings)
+                      _chip(cs, isDark, v.$2, v.$1 == _voicing,
+                          () => setState(() => _voicing = v.$1)),
                   ],
                 ),
               ],
@@ -317,14 +390,48 @@ class _BackingTrackScreenState extends State<BackingTrackScreen> {
                   ],
                 ),
                 const SizedBox(height: 10),
+                Text('FILL EVERY',
+                    style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final f in _fillOpts)
+                      _chip(cs, isDark, f.$2, f.$1 == _fillEvery,
+                          () => setState(() => _fillEvery = f.$1)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('COUNT-IN',
+                    style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final o in _countInOpts)
+                      _chip(cs, isDark, o.$2, o.$1 == _countIn,
+                          () => setState(() => _countIn = o.$1)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text('HUMANIZE — ${_humanize == 0 ? "machine-tight" : "$_humanize%"}',
+                    style: Sanctuary.mono(fontSize: 10, color: cs.onSurfaceVariant)),
+                Slider(
+                  min: 0,
+                  max: 100,
+                  value: _humanize.toDouble(),
+                  onChanged: (v) => setState(() => _humanize = v.round()),
+                ),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: [
                     _chip(cs, isDark, 'Pad', _pad, () => setState(() => _pad = !_pad)),
                     _chip(cs, isDark, 'Bass', _bass, () => setState(() => _bass = !_bass)),
-                    _chip(cs, isDark, 'Count-in', _countIn,
-                        () => setState(() => _countIn = !_countIn)),
+                    _chip(cs, isDark, 'Walk-ups', _walkups,
+                        () => setState(() => _walkups = !_walkups)),
                   ],
                 ),
               ],

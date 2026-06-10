@@ -68,6 +68,11 @@ const _tomFill68 = <(int, int)>[(3, 0), (4, 1), (5, 2)];
 const _snareFill44 = <(int, double)>[(4, 0.5), (5, 0.62), (6, 0.78), (7, 0.95)];
 const _snareFill68 = <(int, double)>[(3, 0.55), (4, 0.72), (5, 0.92)];
 
+// Within-bar dynamics — beat 1 strongest, backbeats medium, "ands" lighter.
+// Real players never hit every subdivision at the same strength.
+const _contour44 = [1.0, 0.84, 0.92, 0.84, 0.96, 0.84, 0.9, 0.84];
+const _contour68 = [1.0, 0.85, 0.88, 0.95, 0.85, 0.88];
+
 /// Style-specific bass lines on the eighth grid. `busy` marks pickup notes
 /// that only play at full bass busyness (energy ≥ full).
 class _BassStep {
@@ -155,6 +160,7 @@ class BackingTrackEngine {
   final Map<int, AudioSource> _bassFor = {}; // key: midi note
   final Map<String, AudioSource> _drumFor = {}; // kick/snare/hat/…/clickHi/clickLo
   List<List<int>> _builtFor = [];
+  List<List<int>> _builtTriads = [];
   bool _building = false;
 
   Timer? _timer;
@@ -166,10 +172,12 @@ class BackingTrackEngine {
   int _globalStep = 0; // steps since play started — drives bar-level fills
   int _round = 0; // completed passes through the progression — drives auto-build
   int _countLeft = 0; // count-in steps remaining
+  int _countTotal = 0;
   bool _loggedFirstStep = false;
 
   // Live params.
-  List<List<int>> chords = []; // absolute pitch classes (triad, or +7th/+9th)
+  List<List<int>> chords = []; // voiced absolute MIDI notes per chord
+  List<List<int>> triads = []; // chord pitch classes (bass + walk-ups read these)
   int bpm = 90;
   int barsPerChord = 1;
   String meter = '4/4'; // '4/4' | '6/8'
@@ -177,7 +185,10 @@ class BackingTrackEngine {
   String feel = 'sustained'; // sustained | pulse | arpeggio
   int energy = 2; // 0..3, used when autoBuild is off
   bool autoBuild = true;
-  bool countIn = true;
+  int countIn = 1; // bars of clicks before the band comes in (0..2)
+  int humanize = 60; // 0..100 — velocity wobble + ghost notes
+  bool walkups = true; // bass walks chromatically into the next chord
+  int fillEvery = 4; // a fill every N bars (0 = never)
   bool padOn = true;
   bool bassOn = true;
 
@@ -188,7 +199,9 @@ class BackingTrackEngine {
 
   Future<void> _ensureBuilt() async {
     if (_building) return;
-    if (_listEq(_builtFor, chords) && _padFor.isNotEmpty) return;
+    if (_listEq(_builtFor, chords) && _listEq(_builtTriads, triads) && _padFor.isNotEmpty) {
+      return;
+    }
     _building = true;
     final s = SoLoud.instance;
     if (!s.isInitialized) await s.init();
@@ -226,24 +239,31 @@ class BackingTrackEngine {
         _padFor[key] = await s.loadMem('bt-pad-$key.wav', _wav(_chordWav(chord, 2.4, 1.1)));
         _hitFor[key] = await s.loadMem('bt-hit-$key.wav', _wav(_chordWav(chord, 0.8, 3.2)));
       }
-      for (final pc in chord) {
-        // Arpeggio tones (two octaves) + every bass tone the patterns can ask
-        // for (root/third/fifth at 36+pc, octave at 48+root).
-        for (final m in [60 + pc, 72 + pc]) {
+      // Arpeggio tones (the voiced notes + an octave up).
+      for (final note in chord) {
+        for (final m in [note, note + 12]) {
           _toneFor[m] ??= await s.loadMem(
             'bt-tone-$m.wav',
-            _wav(_toneWav(_freq(m), 0.7, const [1.0, 0.5, 0.28, 0.12], gain: 0.22, decay: 3.0)),
-          );
-        }
-        for (final m in [36 + pc, 48 + pc]) {
-          _bassFor[m] ??= await s.loadMem(
-            'bt-bass-$m.wav',
-            _wav(_toneWav(_freq(m), 1.2, const [1.0, 0.45, 0.15], gain: 0.5, decay: 3.0)),
+            _wav(_toneWav(_freq(m), 0.7, const [1.0, 0.5, 0.28, 0.12],
+                gain: 0.22, decay: 3.0, detune: 0.002)),
           );
         }
       }
     }
+    // Every bass note the patterns can ask for: root/third/fifth at 36+pc,
+    // octave pops at 48+pc, and the chromatic walk-up below each root.
+    for (final triad in triads) {
+      final wants = <int>{for (final pc in triad) 36 + pc, for (final pc in triad) 48 + pc};
+      if (triad.isNotEmpty) wants.add(35 + triad[0]);
+      for (final m in wants) {
+        _bassFor[m] ??= await s.loadMem(
+          'bt-bass-$m.wav',
+          _wav(_toneWav(_freq(m), 1.2, const [1.0, 0.45, 0.15], gain: 0.5, decay: 3.0)),
+        );
+      }
+    }
     _builtFor = [for (final c in chords) List<int>.of(c)];
+    _builtTriads = [for (final c in triads) List<int>.of(c)];
     _building = false;
     debugPrint('[audio] backing track built — ${_padFor.length} pads, '
         '${_bassFor.length} basses, ${_drumFor.length} drums (init=${s.isInitialized})');
@@ -257,7 +277,8 @@ class BackingTrackEngine {
     _chordIndex = 0;
     _globalStep = 0;
     _round = 0;
-    _countLeft = countIn ? (meter == '6/8' ? 6 : 8) : 0;
+    _countTotal = countIn.clamp(0, 2) * (meter == '6/8' ? 6 : 8);
+    _countLeft = _countTotal;
     _clock
       ..reset()
       ..start();
@@ -290,11 +311,11 @@ class BackingTrackEngine {
     final compound = meter == '6/8';
     final eighthsPerBar = compound ? 6 : 8;
 
-    // Count-in: one bar of metronome clicks before the band comes in.
+    // Count-in: 0–2 bars of metronome clicks before the band comes in.
     if (_countLeft > 0) {
-      final i = eighthsPerBar - _countLeft;
-      final accent = compound ? (i == 0 || i == 3) : i == 0;
-      if (compound || i.isEven) {
+      final ib = (_countTotal - _countLeft) % eighthsPerBar;
+      final accent = compound ? (ib == 0 || ib == 3) : ib == 0;
+      if (compound || ib.isEven) {
         final src = _drumFor[accent ? 'clickHi' : 'clickLo'];
         if (src != null) s.play(src, volume: accent ? 0.9 : 0.65);
       }
@@ -310,8 +331,10 @@ class BackingTrackEngine {
     // Energy — the manual level, or the auto-build arc stepping each pass.
     final level = autoBuild ? _buildArc[_round % _buildArc.length] : energy.clamp(0, 3);
     final e = _energyConf[level];
-    // No two hits land at exactly the same strength — keeps loops alive.
-    double human() => 0.94 + _rng.nextDouble() * 0.08;
+    final h = humanize.clamp(0, 100) / 100;
+    // Within-bar dynamics curve + per-hit wobble, both humanize-scaled.
+    final contour = (compound ? _contour68 : _contour44)[eighth];
+    double human() => 1 + (_rng.nextDouble() - 0.5) * 0.16 * h;
 
     if (step == 0) {
       onChord?.call(index);
@@ -329,37 +352,50 @@ class BackingTrackEngine {
         final onPulse = compound ? (eighth == 0 || eighth == 3) : eighth.isEven;
         if (onPulse) {
           final hit = _hitFor[chord.join(',')];
-          if (hit != null) s.play(hit, volume: (e.vel * human() * 0.9).clamp(0.0, 1.0));
+          if (hit != null) {
+            s.play(hit, volume: (e.vel * contour * human() * 0.9).clamp(0.0, 1.0));
+          }
         }
       } else {
-        // arpeggio — one tone per eighth, climbing an octave each pass
+        // arpeggio — one voiced note per eighth, climbing an octave each pass
         final n = chord.length;
-        final pc = chord[step % n];
+        final note = chord[step % n];
         final oct = (step ~/ n).isOdd ? 12 : 0;
-        final tone = _toneFor[60 + pc + oct];
-        if (tone != null) s.play(tone, volume: (e.vel * human() * 0.9).clamp(0.0, 1.0));
+        final tone = _toneFor[note + oct];
+        if (tone != null) {
+          s.play(tone, volume: (e.vel * contour * human() * 0.9).clamp(0.0, 1.0));
+        }
       }
     }
 
     // Bass — style-specific lines, thinned out at low energy to a whole note.
-    if (bassOn) {
-      final table = compound ? _bass68 : _bass44;
-      final steps = e.bassBusy == 0
-          ? table['ballad']!
-          : (table[_bassForStyle[style] ?? 'default'] ?? table['default']!);
-      for (final st in steps) {
-        if (st.e != eighth || st.busy > e.bassBusy) continue;
-        final pc = st.tone == 'fifth'
-            ? chord[math.min(2, chord.length - 1)]
-            : st.tone == 'third'
-                ? chord[math.min(1, chord.length - 1)]
-                : chord[0];
-        final bass = _bassFor[(st.tone == 'octave' ? 48 : 36) + pc];
-        if (bass != null) s.play(bass, volume: (e.vel * st.vel * human()).clamp(0.0, 1.0));
+    if (bassOn && triads.isNotEmpty) {
+      final triad = triads[index % triads.length];
+      // On the last eighth before a chord change, walk a half-step into the
+      // next root — the classic bass player's connective move.
+      if (walkups && e.bassBusy >= 1 && step == stepsPerChord - 1 && triads.length > 1) {
+        final next = triads[(index + 1) % triads.length];
+        final bass = _bassFor[35 + next[0]];
+        if (bass != null) s.play(bass, volume: (e.vel * 0.7 * human()).clamp(0.0, 1.0));
+      } else {
+        final table = compound ? _bass68 : _bass44;
+        final steps = e.bassBusy == 0
+            ? table['ballad']!
+            : (table[_bassForStyle[style] ?? 'default'] ?? table['default']!);
+        for (final st in steps) {
+          if (st.e != eighth || st.busy > e.bassBusy) continue;
+          final pc = st.tone == 'fifth'
+              ? triad[math.min(2, triad.length - 1)]
+              : st.tone == 'third'
+                  ? triad[math.min(1, triad.length - 1)]
+                  : triad[0];
+          final bass = _bassFor[(st.tone == 'octave' ? 48 : 36) + pc];
+          if (bass != null) s.play(bass, volume: (e.vel * st.vel * human()).clamp(0.0, 1.0));
+        }
       }
     }
 
-    if (style != 'none') _playDrums(s, e, compound, eighthsPerBar, eighth, index);
+    if (style != 'none') _playDrums(s, e, h, compound, eighthsPerBar, eighth, index);
 
     if (!_loggedFirstStep) {
       _loggedFirstStep = true;
@@ -376,24 +412,29 @@ class BackingTrackEngine {
     }
   }
 
-  void _playDrums(SoLoud s, _Energy e, bool compound, int eighthsPerBar, int eighth, int index) {
+  void _playDrums(
+      SoLoud s, _Energy e, double h, bool compound, int eighthsPerBar, int eighth, int index) {
     final p = (compound ? _patterns68 : _patterns44)[style];
     if (p == null) return;
+    // Every hit's velocity wobbles with the humanize amount.
     void hit(String voice, double accent) {
       final src = _drumFor[voice];
-      if (src != null) s.play(src, volume: (e.vel * accent).clamp(0.0, 1.0));
+      final wobble = 1 - _rng.nextDouble() * 0.12 * h;
+      if (src != null) s.play(src, volume: (e.vel * accent * wobble).clamp(0.0, 1.0));
     }
 
     final bar = _stepInChord ~/ eighthsPerBar;
     final isLoopStart = index == 0 && bar == 0;
-    // A fill every 4th bar (alternating toms / snare roll), then a crash
+    // A fill every N bars (alternating toms / snare roll), then a crash
     // landing on the bar after it.
+    final fev = fillEvery;
     final globalBar = _globalStep ~/ eighthsPerBar;
-    final isFillBar = e.fills && globalBar % 4 == 3;
-    final crashBar = isLoopStart || (e.fills && globalBar > 0 && globalBar % 4 == 0);
+    final isFillBar = e.fills && fev > 0 && globalBar % fev == fev - 1;
+    final crashBar =
+        isLoopStart || (e.fills && fev > 0 && globalBar > 0 && globalBar % fev == 0);
     if (p.crashFirst && crashBar && eighth == 0) hit('crash', 0.9);
     if (isFillBar && eighth >= (compound ? 3 : 4)) {
-      if ((globalBar ~/ 4).isOdd) {
+      if ((globalBar ~/ fev).isOdd) {
         for (final (fe, v) in compound ? _snareFill68 : _snareFill44) {
           if (fe == eighth) hit('snare', v);
         }
@@ -405,7 +446,7 @@ class BackingTrackEngine {
       return;
     }
     // Cymbal hands never hit twice at the same strength.
-    final cymAcc = (eighth.isOdd ? 0.52 : 0.78) + _rng.nextDouble() * 0.12;
+    final cymAcc = (eighth.isOdd ? 0.52 : 0.78) + _rng.nextDouble() * 0.12 * (0.5 + h);
     void pulse() {
       if (p.hat.contains(eighth)) hit('hat', cymAcc);
       if (p.ride.contains(eighth)) hit('ride', cymAcc);
@@ -426,7 +467,7 @@ class BackingTrackEngine {
     if (p.kick.contains(eighth)) hit('kick', 1);
     if (p.snare.contains(eighth)) {
       hit('snare', 1);
-    } else if (!compound && (eighth == 3 || eighth == 7) && _rng.nextDouble() < 0.18) {
+    } else if (!compound && (eighth == 3 || eighth == 7) && _rng.nextDouble() < 0.28 * h) {
       hit('snare', 0.22); // ghost note between backbeats
     }
     if (p.rim.contains(eighth)) hit('rim', 0.8);
@@ -467,23 +508,27 @@ class BackingTrackEngine {
 
   double _freq(int midi) => 440 * math.pow(2, (midi - 69) / 12).toDouble();
 
-  /// A soft chord mixed into one mono WAV (notes = C4-relative pcs).
-  List<double> _chordWav(List<int> pcs, double durSec, double decay) {
+  /// A soft chord mixed into one mono WAV from voiced MIDI notes. The notes
+  /// are rolled a few ms apart and gently detuned — a block of perfectly
+  /// aligned, perfectly tuned sines is the synthetic giveaway.
+  List<double> _chordWav(List<int> notes, double durSec, double decay) {
     const sr = 44100;
+    final rng = math.Random(notes.fold<int>(7, (a, b) => a * 31 + b));
     final n = (sr * durSec).round();
     final out = List<double>.filled(n, 0);
-    for (final pc in pcs) {
-      final tone = _toneWav(_freq(60 + pc), durSec, const [1.0, 0.5, 0.28, 0.12],
-          gain: 0.16, decay: decay);
-      for (var i = 0; i < n; i++) {
-        out[i] += tone[i];
+    for (var v = 0; v < notes.length; v++) {
+      final tone = _toneWav(_freq(notes[v]), durSec, const [1.0, 0.5, 0.28, 0.12],
+          gain: 0.16, decay: decay, detune: 0.003);
+      final offset = (sr * (v * 0.010 + rng.nextDouble() * 0.006)).round();
+      for (var i = 0; i + offset < n && i < tone.length; i++) {
+        out[i + offset] += tone[i];
       }
     }
     return out;
   }
 
   List<double> _toneWav(double freq, double durSec, List<double> partials,
-      {double gain = 0.3, double decay = 2.0, double attack = 0.008}) {
+      {double gain = 0.3, double decay = 2.0, double attack = 0.008, double detune = 0}) {
     const sr = 44100;
     final n = (sr * durSec).round();
     final out = List<double>.filled(n, 0);
@@ -495,7 +540,10 @@ class BackingTrackEngine {
       final t = i / sr;
       var v = 0.0;
       for (var h = 0; h < partials.length; h++) {
-        v += partials[h] * math.sin(2 * math.pi * freq * (h + 1) * t);
+        final w = 2 * math.pi * freq * (h + 1) * t;
+        // Two slightly detuned oscillators per partial — gentle chorus warmth.
+        v += partials[h] *
+            (detune > 0 ? 0.5 * (math.sin(w) + math.sin(w * (1 + detune))) : math.sin(w));
       }
       v /= norm;
       final env = t < attack ? t / attack : math.exp(-(t - attack) * decay);
