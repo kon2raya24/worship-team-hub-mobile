@@ -66,13 +66,21 @@ class _MetronomeScreenState extends State<MetronomeScreen> {
     _engine.setBeatsPerBar(n);
   }
 
-  void _toggle() {
+  Future<void> _toggle() async {
     if (_running) {
       _engine.stop();
       setState(() => _running = false);
     } else {
-      _engine.start();
-      setState(() => _running = true);
+      try {
+        await _engine.start();
+        if (mounted) setState(() => _running = true);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Audio failed to start: $e')),
+          );
+        }
+      }
     }
   }
 

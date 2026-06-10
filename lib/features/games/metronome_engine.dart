@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
 
 /// Metronome audio engine (Flutter port of the web lib/use-metronome.ts).
@@ -20,6 +20,7 @@ class MetronomeEngine {
   final Stopwatch _clock = Stopwatch();
   double _nextBeat = 0; // ms on the stopwatch clock
   int _beat = 0;
+  bool _loggedFirstClick = false;
 
   int bpm = 100;
   int beatsPerBar = 4;
@@ -42,6 +43,7 @@ class MetronomeEngine {
     _normal = await s.loadMem('metro-normal.wav', _clickWav(1000));
     _accent = await s.loadMem('metro-accent.wav', _clickWav(1500));
     _loading = false;
+    debugPrint('[audio] metronome sources loaded (init=${s.isInitialized})');
   }
 
   Future<void> start() async {
@@ -71,7 +73,15 @@ class MetronomeEngine {
     while (now >= _nextBeat) {
       final accent = _beat == 0;
       final src = accent ? _accent : _normal;
-      if (src != null) SoLoud.instance.play(src);
+      if (src != null) {
+        SoLoud.instance.play(src);
+        if (!_loggedFirstClick) {
+          _loggedFirstClick = true;
+          final s = SoLoud.instance;
+          debugPrint('[audio] metronome first click — activeVoices='
+              '${s.getActiveVoiceCount()} globalVolume=${s.getGlobalVolume()}');
+        }
+      }
       onBeat?.call(_beat);
       _beat = (_beat + 1) % beatsPerBar;
       _nextBeat += beatMs;
